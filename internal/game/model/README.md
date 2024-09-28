@@ -1,0 +1,1 @@
+static definitions of entities in the game are defined here

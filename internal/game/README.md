@@ -1,0 +1,1 @@
+entities and mechanics that make up the game are defined here
