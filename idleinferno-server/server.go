@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"math"
@@ -28,14 +27,13 @@ type Client struct {
 
 var (
 	USER_COUNTER atomic.Uint64
-	SERVER_USER  = requests.User{UserId: 0, Username: "SERVER"}
+	SERVER_USER  = requests.User{Username: "DANTE"}
 )
 
 func Start() {
 	http.HandleFunc("/", home)
 	http.HandleFunc("/ping", pong)
 	http.HandleFunc("/ws", handleConnection)
-	http.HandleFunc("/users", handleUsers)
 
 	go handleMessages()
 
@@ -66,17 +64,6 @@ func pong(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Pong!")
 }
 
-func handleUsers(w http.ResponseWriter, r *http.Request) {
-	var usersMsg requests.UsersMsg
-	USERS_MU.Lock()
-	for _, u := range USERS {
-		usersMsg.Users = append(usersMsg.Users, *u.User)
-	}
-	USERS_MU.Unlock()
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(&usersMsg)
-}
-
 func handleConnection(w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -88,8 +75,8 @@ func handleConnection(w http.ResponseWriter, r *http.Request) {
 	// Wait for initial hello message
 	var msg requests.Message
 	err = conn.ReadJSON(&msg)
-	if err != nil || msg.Code != requests.Salutations {
-		fmt.Printf("%v %s\n", msg.Code, err.Error())
+	if err != nil {
+		log.Printf("%v %s\n", msg.Code, err.Error())
 		return
 	}
 
@@ -99,28 +86,11 @@ func handleConnection(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user := requests.User{UserId: userId, Username: msg.User.Username}
-
-	// Send back our reply, they're waiting for their user id
-	var reply requests.Message
-	reply.User = user
-	reply.Message = "id"
-	reply.Code = requests.Salutations
-	err = conn.WriteJSON(&reply)
-	if err != nil {
-		errMsg := fmt.Sprintf("Failed to handshake with client: %s", err.Error())
-		fmt.Println(errMsg)
-		return
-	}
-
+	user := requests.User{Username: msg.User.Username}
 	client := Client{&user, conn}
-
 	USERS_MU.Lock()
 	USERS[userId] = &client
 
-	// re-use the original salutations message..
-	// but careful - we must update the user id after it was assigned!
-	msg.User.UserId = userId
 	BROADCAST <- msg
 
 	USERS_MU.Unlock()
@@ -172,7 +142,7 @@ func (s *Server) Run() {
 	game := game.Game{World: s.initWorld()}
 	log.Println("World initialized successfully!")
 
-	// Start the listener
+	// Start the request listener
 	go Start()
 
 	// Start the game

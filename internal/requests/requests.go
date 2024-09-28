@@ -9,7 +9,6 @@ const (
 )
 
 type User struct {
-	UserId   uint64
 	Username string
 }
 
@@ -20,7 +19,3 @@ type Message struct {
 }
 
 type Ping struct{}
-
-type UsersMsg struct {
-	Users []User
-}

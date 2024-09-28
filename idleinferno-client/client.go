@@ -16,6 +16,7 @@ type Client struct {
 func (c *Client) Run() {
 	log.Println("Starting idleinferno client...")
 	u := url.URL{Scheme: "ws", Host: "10.0.0.33:12315", Path: "/ws"}
+
 	log.Println("Dialing idleinferno server...")
 	ws, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
 	c.ws = ws
@@ -24,11 +25,13 @@ func (c *Client) Run() {
 	}
 	log.Println("Connected to idleinferno server!")
 
+	// TODO: specify username
 	// Send the initial hello to server
 	log.Println("Performing handshake with idleinferno server...")
 	var msg requests.Message
 	msg.Message = "hi"
 	msg.Code = requests.Salutations
+	msg.User = requests.User{Username: "testclient"}
 	err = c.ws.WriteJSON(&msg)
 	if err != nil {
 		log.Fatalln("Failed to handshake with idleinferno server: ", err.Error())
