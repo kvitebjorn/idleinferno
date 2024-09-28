@@ -1,3 +1,3 @@
 *.db
-idleinferno-server
-idleinferno-client
+idleinferno-server/idleinferno-server
+idleinferno-client/idleinferno-client
