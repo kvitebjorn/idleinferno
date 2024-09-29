@@ -2,23 +2,29 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net"
+	"net/http"
 	"net/url"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/gorilla/websocket"
+	"github.com/kvitebjorn/idleinferno/internal/auth"
 	"github.com/kvitebjorn/idleinferno/internal/requests"
 )
 
 type Client struct {
 	ws            *websocket.Conn
 	serverAddress string
-	username      string
+	name          string
 }
 
 func (c *Client) Run() {
@@ -65,7 +71,7 @@ func (c *Client) Run() {
 	var msg requests.Message
 	msg.Message = "hi"
 	msg.Code = requests.Salutations
-	msg.User = requests.User{Username: c.username}
+	msg.Player = requests.Player{Name: c.name}
 	err = c.ws.WriteJSON(&msg)
 	if err != nil {
 		log.Fatalln("Failed to handshake with idleinferno server: ", err.Error())
@@ -77,23 +83,94 @@ func (c *Client) Run() {
 }
 
 func (c *Client) menu() {
-	// TODO: add option to get info about char
-	// TODO: text walkthrough:
-	//   login   [l]
-	//   info    [i]
-	//   sign up [s]
-	//   if l:
-	//     ask for username
-	//     ask for password
-	//     auth
-	//     if auth'ed, set c.username to username!
-	//   if i:
-	//     ask for username to lookup
-	//       should be > 0 alphanumeric only chars
-	//     return a text dump of user, if it exists
-	//       will need a new request for this - ReadPlayer (by 'name')
-	//     return to main menu
-	//   if s:
+	fmt.Println("")
+	fmt.Println("[l] login")
+	fmt.Println("[i] info")
+	fmt.Println("[u] sign up")
+	fmt.Println("[q] quit")
+	fmt.Println("")
+	fmt.Print("→ ")
+	reader := bufio.NewReader(os.Stdin)
+	char, _, err := reader.ReadRune()
+	if err != nil {
+		log.Println(err)
+		c.menu()
+	}
+
+	char = unicode.ToLower(char)
+	switch char {
+	case 'u':
+		c.handleSignUp()
+		c.menu()
+		break
+	case 'l':
+		c.handleLogin()
+		break
+	case 'i':
+		c.handleInfo()
+		c.menu()
+		break
+	case 'q':
+		c.handleQuit()
+		break
+	default:
+		fmt.Println("Invalid menu selection.")
+		c.menu()
+	}
+}
+
+func isAlphanumeric(word string) bool {
+	return regexp.MustCompile(`^[a-zA-Z0-9]*$`).MatchString(word)
+}
+
+func checkInput(s string) bool {
+	if !isAlphanumeric(s) || len(s) == 0 {
+		fmt.Println("Invalid input.")
+		return false
+	}
+	return true
+}
+
+func (c *Client) handleLogin() {
+	reader := bufio.NewReader(os.Stdin)
+
+	fmt.Println("")
+	fmt.Println("Login")
+
+	fmt.Print("username: ")
+	rawUsername, _ := reader.ReadString('\n')
+	trimmedUsername := strings.TrimSpace(rawUsername)
+	isValid := checkInput(trimmedUsername)
+	if !isValid {
+		c.handleLogin()
+	}
+
+	fmt.Print("password: ")
+	rawPassword, _ := reader.ReadString('\n')
+	trimmedPassword := strings.TrimSpace(rawPassword)
+	isValid = checkInput(trimmedPassword)
+	if !isValid {
+		c.handleLogin()
+	}
+
+	maybeUser, err := c.getUser(trimmedUsername)
+	if err != nil {
+		fmt.Println("Failed to get user.")
+		c.menu()
+	}
+
+	hashedPassword := maybeUser.Password
+	isMatch := auth.CheckHash(trimmedPassword, hashedPassword)
+	if !isMatch {
+		fmt.Println("Username or password does not match our records.")
+		c.menu()
+	}
+	c.name = trimmedUsername
+}
+
+func (c *Client) handleSignUp() {
+	fmt.Println("")
+	fmt.Println("Create a player")
 	//     ask for username
 	//       search for existing usernames, repeat question if it exists
 	//       should be > 0 alphanumeric only chars
@@ -112,16 +189,71 @@ func (c *Client) menu() {
 	//     return to main menu
 }
 
-func (c *Client) sendMessage(s string) error {
+func (c *Client) handleInfo() {
+	fmt.Println("")
+	fmt.Println("Get player info")
+	//     ask for username to lookup
+	//       should be > 0 alphanumeric only chars
+	//     return a text dump of user, if it exists
+	//       will need a new request for this - ReadPlayer (by 'name')
+	//     return to main menu
+}
+
+func (c *Client) handleQuit() {
+	c.disconnect()
+}
+
+func (c *Client) sendMessage(code requests.StatusCode, content string) error {
 	var msg requests.Message
-	msg.Code = requests.Chatter
-	msg.Message = s
+	msg.Code = code
+	msg.Message = content
 	err := c.ws.WriteJSON(&msg)
 	if err != nil {
 		log.Println("Failed to send message to idleinferno server: ", err.Error())
 		return err
 	}
 	return nil
+}
+
+func (c *Client) receiveMessage() (requests.Message, error) {
+	var msg requests.Message
+	err := c.ws.ReadJSON(&msg)
+	if err != nil {
+		log.Println("Failed to read message from idleinferno server: ", err.Error())
+		return msg, err
+	}
+	return msg, nil
+}
+
+func (c *Client) getUser(name string) (*requests.User, error) {
+	requestURL := fmt.Sprintf("http://%s/user/%s", c.serverAddress, name)
+	req, err := http.NewRequest(http.MethodGet, requestURL, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if res.StatusCode != 200 {
+		return nil, err
+	}
+
+	resBody, err := io.ReadAll(res.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	user := &requests.User{}
+	err = json.Unmarshal(resBody, user)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return user, nil
 }
 
 func (c *Client) listen() {
@@ -156,4 +288,5 @@ func (c *Client) disconnect() {
 	}
 	c.ws.Close()
 	log.Println("Disconnected!")
+	os.Exit(1)
 }

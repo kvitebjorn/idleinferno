@@ -17,4 +17,6 @@ type Database interface {
 	ReadItems() []*model.Item
 	UpdateItem(*model.Item) int64
 	DeleteItem(guid string)
+
+	ReadUser(name string) *model.User
 }

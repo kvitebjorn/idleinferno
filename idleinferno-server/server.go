@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"math"
@@ -8,6 +9,7 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"github.com/kvitebjorn/idleinferno/internal/db"
 	"github.com/kvitebjorn/idleinferno/internal/db/sqlite"
@@ -21,24 +23,26 @@ type Server struct {
 }
 
 type Client struct {
-	User *requests.User
-	Conn *websocket.Conn
+	Player *requests.Player
+	Conn   *websocket.Conn
 }
 
 var (
-	USER_COUNTER atomic.Uint64
-	SERVER_USER  = requests.User{Username: "DANTE"}
+	USER_COUNTER  atomic.Uint64
+	SERVER_PLAYER = requests.Player{Name: "DANTE"}
 )
 
-func Start() {
-	http.HandleFunc("/", home)
-	http.HandleFunc("/ping", pong)
-	http.HandleFunc("/ws", handleConnection)
+func (s *Server) Start() {
+	myRouter := mux.NewRouter().StrictSlash(true)
+	myRouter.HandleFunc("/", home)
+	myRouter.HandleFunc("/ping", pong)
+	myRouter.HandleFunc("/user/{name}", s.getUser)
+	myRouter.HandleFunc("/ws", handleConnection)
 
 	go handleMessages()
 
 	fmt.Println("idleinferno server started on :12315")
-	err := http.ListenAndServe(":12315", nil)
+	err := http.ListenAndServe(":12315", myRouter)
 	if err != nil {
 		panic("Error starting idleinferno server: " + err.Error())
 	}
@@ -64,6 +68,21 @@ func pong(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Pong!")
 }
 
+func (s *Server) getUser(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	key := vars["name"]
+	maybeUser := s.db.ReadUser(key)
+	if maybeUser == nil {
+		return
+	}
+	encodedUser := requests.User{
+		Name:     maybeUser.Name,
+		Email:    maybeUser.Email,
+		Password: maybeUser.Password,
+	}
+	json.NewEncoder(w).Encode(encodedUser)
+}
+
 func handleConnection(w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -86,7 +105,7 @@ func handleConnection(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user := requests.User{Username: msg.User.Username}
+	user := requests.Player{Name: msg.Player.Name}
 	client := Client{&user, conn}
 	USERS_MU.Lock()
 	USERS[userId] = &client
@@ -95,8 +114,8 @@ func handleConnection(w http.ResponseWriter, r *http.Request) {
 
 	USERS_MU.Unlock()
 
-	connMsg := fmt.Sprintf("%s connected!", client.User.Username)
-	BROADCAST <- requests.Message{User: SERVER_USER, Message: connMsg, Code: requests.Chatter}
+	connMsg := fmt.Sprintf("%s connected!", client.Player.Name)
+	BROADCAST <- requests.Message{Player: SERVER_PLAYER, Message: connMsg, Code: requests.Chatter}
 
 	// Listen for messages, and add them to the broadcast channel to be fanned out
 	for {
@@ -106,9 +125,9 @@ func handleConnection(w http.ResponseWriter, r *http.Request) {
 			USERS_MU.Lock()
 			delete(USERS, userId)
 			USERS_MU.Unlock()
-			disconnectMsg := fmt.Sprintf("%s disconnected!", client.User.Username)
-			BROADCAST <- requests.Message{User: *client.User, Message: "bye", Code: requests.Valediction}
-			BROADCAST <- requests.Message{User: SERVER_USER, Message: disconnectMsg, Code: requests.Chatter}
+			disconnectMsg := fmt.Sprintf("%s disconnected!", client.Player.Name)
+			BROADCAST <- requests.Message{Player: *client.Player, Message: "bye", Code: requests.Valediction}
+			BROADCAST <- requests.Message{Player: SERVER_PLAYER, Message: disconnectMsg, Code: requests.Chatter}
 			return
 		}
 
@@ -143,7 +162,7 @@ func (s *Server) Run() {
 	log.Println("World initialized successfully!")
 
 	// Start the request listener
-	go Start()
+	go s.Start()
 
 	// Start the game
 	log.Println("Running main game loop...")

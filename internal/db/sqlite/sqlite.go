@@ -61,9 +61,17 @@ func (s *Sqlite) CreatePlayer(*model.Player) *model.Player {
 	return nil
 }
 
-func (s *Sqlite) ReadPlayer(guid string) *model.Player {
-	// TODO
-	return nil
+func (s *Sqlite) ReadPlayer(name string) *model.Player {
+	row := s.db.QueryRow(queries.ReadPlayerSql, name)
+	player := &model.Player{Location: &model.Coordinates{X: 0, Y: 0}}
+
+	// TODO: scan the rest
+	err := row.Scan(&player.Id, &player.Name, &player.Location.X, &player.Location.Y)
+	if err != nil {
+		log.Println("Error querying for player: ", err.Error())
+	}
+
+	return player
 }
 
 func (s *Sqlite) ReadPlayers() []*model.Player {
@@ -87,6 +95,18 @@ func (s *Sqlite) ReadPlayers() []*model.Player {
 	checkErr(err)
 
 	return players
+}
+
+func (s *Sqlite) ReadUser(name string) *model.User {
+	row := s.db.QueryRow(queries.ReadUserSql, name)
+
+	user := &model.User{}
+	err := row.Scan(&user.Name, &user.Email, &user.Password)
+	if err != nil {
+		log.Println("Error querying for user: ", err.Error())
+	}
+
+	return user
 }
 
 func (s *Sqlite) UpdatePlayer(player *model.Player) int64 {

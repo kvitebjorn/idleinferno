@@ -8,3 +8,9 @@ type Player struct {
 	Inventory *Inventory
 	Location  *Coordinates
 }
+
+type User struct {
+	Name     string
+	Email    string
+	Password string
+}

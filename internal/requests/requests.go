@@ -6,14 +6,21 @@ const (
 	Salutations StatusCode = iota
 	Valediction
 	Chatter
+	Signup
 )
 
+type Player struct {
+	Name string
+}
+
 type User struct {
-	Username string
+	Name     string
+	Email    string
+	Password string
 }
 
 type Message struct {
-	User    User       `json:"user"`
+	Player  Player     `json:"player"`
 	Message string     `json:"message"`
 	Code    StatusCode `json:"code"`
 }

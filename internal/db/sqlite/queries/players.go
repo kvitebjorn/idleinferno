@@ -20,15 +20,16 @@ const CreatePlayersTableSql string = `CREATE TABLE players (
 		necklace  TEXT,
 		ring      TEXT,
 		weapon    TEXT,
-		active    TEXT,
+		active    INTEGER,
 		created   TEXT NOT NULL,
 		enabled   INTEGER
 	)`
 
 // TODO: the rest of the fields
 const (
+	ReadPlayerSql   string = `SELECT id, name, xcoord, ycoord FROM players WHERE name = ?`
 	ReadPlayersSql  string = `SELECT id, name, xcoord, ycoord FROM players`
-	UpdatePlayerSql string = `UPDATE players
-SET xcoord = ?, ycoord = ?
-WHERE id = ?; `
+	UpdatePlayerSql string = `UPDATE players SET xcoord = ?, ycoord = ? WHERE id = ?; `
+
+	ReadUserSql string = `SELECT name, email, password FROM players WHERE name = ?`
 )
