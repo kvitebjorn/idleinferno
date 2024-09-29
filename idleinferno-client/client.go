@@ -1,8 +1,14 @@
 package main
 
 import (
+	"bufio"
+	"fmt"
 	"log"
+	"net"
 	"net/url"
+	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -10,39 +16,100 @@ import (
 )
 
 type Client struct {
-	ws *websocket.Conn
+	ws            *websocket.Conn
+	serverAddress string
+	username      string
 }
 
 func (c *Client) Run() {
 	log.Println("Starting idleinferno client...")
-	u := url.URL{Scheme: "ws", Host: "10.0.0.33:12315", Path: "/ws"}
+
+	reader := bufio.NewReader(os.Stdin)
+	fmt.Print("Server ip: ")
+	rawHostname, _ := reader.ReadString('\n')
+	parsedHostname := net.ParseIP(strings.TrimSpace(rawHostname))
+	if parsedHostname == nil {
+		log.Fatalln("Invalid server ip: ", parsedHostname)
+	}
+
+	fmt.Print("Server port #: ")
+	rawPortNumber, _ := reader.ReadString('\n')
+	parsedPortNumber, err := strconv.Atoi(strings.TrimSpace(rawPortNumber))
+	if err != nil {
+		log.Fatalln("Invalid port number: ", parsedPortNumber)
+	}
+	c.serverAddress = parsedHostname.String() + ":" + strconv.Itoa(parsedPortNumber)
+	u := url.URL{
+		Scheme: "ws",
+		Host:   c.serverAddress,
+		Path:   "/ws",
+	}
 
 	log.Println("Dialing idleinferno server...")
 	ws, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
 	c.ws = ws
 	if err != nil {
-		log.Fatalln("Failed to connect to idleinferno server: ", err.Error())
+		log.Fatalln(
+			"Failed to connect to idleinferno server ",
+			parsedHostname.String(),
+			": ",
+			err.Error(),
+		)
 	}
 	log.Println("Connected to idleinferno server!")
 
-	// TODO: specify username
+	c.menu()
+
 	// Send the initial hello to server
 	log.Println("Performing handshake with idleinferno server...")
 	var msg requests.Message
 	msg.Message = "hi"
 	msg.Code = requests.Salutations
-	msg.User = requests.User{Username: "testclient"}
+	msg.User = requests.User{Username: c.username}
 	err = c.ws.WriteJSON(&msg)
 	if err != nil {
 		log.Fatalln("Failed to handshake with idleinferno server: ", err.Error())
 	}
 	log.Println("idleinferno server handshake successful!")
 
-	// Start listening for server messages
+	log.Println("Listening for messages...")
 	c.listen()
+}
 
-	// TODO: set up a buffer to send our own messages to server
-	// probalby do `go c.listen()` after this
+func (c *Client) menu() {
+	// TODO: add option to get info about char
+	// TODO: text walkthrough:
+	//   login   [l]
+	//   info    [i]
+	//   sign up [s]
+	//   if l:
+	//     ask for username
+	//     ask for password
+	//     auth
+	//     if auth'ed, set c.username to username!
+	//   if i:
+	//     ask for username to lookup
+	//       should be > 0 alphanumeric only chars
+	//     return a text dump of user, if it exists
+	//       will need a new request for this - ReadPlayer (by 'name')
+	//     return to main menu
+	//   if s:
+	//     ask for username
+	//       search for existing usernames, repeat question if it exists
+	//       should be > 0 alphanumeric only chars
+	//     ask for class
+	//       should be > 0 alphanumeric only chars
+	//     ask for email
+	//       search for existing email, repeat question if it exists
+	//       use an email validator, or a regex of form *@*.*
+	//     ask for password
+	//       should be > 0 non-white-space chars
+	//     hash email and password
+	//       will need to implement auth stuff for this
+	//     store in db
+	//       will need a new request for this - CreatePlayer
+	//     tell them we successfully created the user
+	//     return to main menu
 }
 
 func (c *Client) sendMessage(s string) error {

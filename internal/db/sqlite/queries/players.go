@@ -7,7 +7,7 @@ const CreatePlayersTableSql string = `CREATE TABLE players (
 		ycoord    INTEGER,
 		email	    TEXT NOT NULL UNIQUE,
 		password	TEXT NOT NULL,
-		class     TEXT,
+		class     TEXT NOT NULL,
 		level     INTEGER,
 		xp        INTEGER,
 		itemlevel INTEGER,
@@ -26,7 +26,9 @@ const CreatePlayersTableSql string = `CREATE TABLE players (
 	)`
 
 // TODO: the rest of the fields
-const ReadPlayersSql string = `SELECT id, name, xcoord, ycoord FROM players`
-const UpdatePlayerSql string = `UPDATE players
+const (
+	ReadPlayersSql  string = `SELECT id, name, xcoord, ycoord FROM players`
+	UpdatePlayerSql string = `UPDATE players
 SET xcoord = ?, ycoord = ?
 WHERE id = ?; `
+)
