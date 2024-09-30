@@ -315,10 +315,9 @@ func (c *Client) listen() {
 }
 
 func (c *Client) disconnect() {
-	if c.ws == nil {
-		return
+	if c.ws != nil {
+		c.ws.Close()
 	}
-	c.ws.Close()
 	log.Println("Disconnected!")
 	os.Exit(1)
 }
