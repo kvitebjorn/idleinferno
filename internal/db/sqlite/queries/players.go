@@ -31,6 +31,6 @@ const (
 	ReadPlayersSql  string = `SELECT id, name, xcoord, ycoord FROM players`
 	UpdatePlayerSql string = `UPDATE players SET xcoord = ?, ycoord = ? WHERE id = ?; `
 
-	ReadUserSql   string = `SELECT name, email, password, online FROM players WHERE name = ?`
+	ReadUserSql   string = `SELECT name, password, online FROM players WHERE name = ?`
 	UpdateUserSql string = `UPDATE players SET online = ? WHERE name = ?`
 )

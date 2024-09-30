@@ -101,7 +101,7 @@ func (s *Sqlite) ReadUser(name string) *model.User {
 	row := s.db.QueryRow(queries.ReadUserSql, name)
 
 	user := &model.User{}
-	err := row.Scan(&user.Name, &user.Email, &user.Password, &user.Online)
+	err := row.Scan(&user.Name, &user.Password, &user.Online)
 	if err != nil {
 		log.Println("Error querying for user:", err.Error())
 	}

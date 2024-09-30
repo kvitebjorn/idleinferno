@@ -78,7 +78,6 @@ func (s *Server) getUser(w http.ResponseWriter, r *http.Request) {
 	}
 	encodedUser := requests.User{
 		Name:     maybeUser.Name,
-		Email:    maybeUser.Email,
 		Password: maybeUser.Password,
 	}
 	json.NewEncoder(w).Encode(encodedUser)
