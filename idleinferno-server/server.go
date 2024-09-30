@@ -11,6 +11,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
+	"github.com/kvitebjorn/idleinferno/internal/auth"
 	"github.com/kvitebjorn/idleinferno/internal/db"
 	"github.com/kvitebjorn/idleinferno/internal/db/sqlite"
 	"github.com/kvitebjorn/idleinferno/internal/game"
@@ -37,7 +38,7 @@ func (s *Server) Start() {
 	myRouter.HandleFunc("/", home)
 	myRouter.HandleFunc("/ping", pong)
 	myRouter.HandleFunc("/user/{name}", s.getUser)
-	myRouter.HandleFunc("/ws", handleConnection)
+	myRouter.HandleFunc("/ws", s.handleConnection)
 
 	go handleMessages()
 
@@ -57,7 +58,7 @@ var upgrader = websocket.Upgrader{
 var (
 	USERS_MU  sync.Mutex
 	USERS     = make(map[uint64]*Client)
-	BROADCAST = make(chan requests.Message)
+	BROADCAST = make(chan requests.PlayerMessage)
 )
 
 func home(w http.ResponseWriter, r *http.Request) {
@@ -83,7 +84,7 @@ func (s *Server) getUser(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(encodedUser)
 }
 
-func handleConnection(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleConnection(w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		fmt.Println(err)
@@ -92,10 +93,30 @@ func handleConnection(w http.ResponseWriter, r *http.Request) {
 	defer conn.Close()
 
 	// Wait for initial hello message
-	var msg requests.Message
+	var msg requests.UserMessage
 	err = conn.ReadJSON(&msg)
 	if err != nil {
 		log.Printf("%v %s\n", msg.Code, err.Error())
+		return
+	}
+
+	user := msg.User
+	maybeUser := s.db.ReadUser(user.Name)
+	if maybeUser == nil {
+		log.Println("User doesn't exist:", user.Name)
+		return
+	}
+	if !auth.CheckHash(user.Password, maybeUser.Password) {
+		log.Println("Invalid user credentials for", user.Name)
+		return
+	}
+	if maybeUser.Online {
+		log.Println(user.Name, "is already online.")
+		return
+	}
+	err = s.db.UpdateUserOnline(user.Name)
+	if err != nil {
+		log.Println("Failed to come online for user", user.Name)
 		return
 	}
 
@@ -105,29 +126,37 @@ func handleConnection(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user := requests.Player{Name: msg.Player.Name}
-	client := Client{&user, conn}
+	player := requests.Player{Name: user.Name}
+	client := Client{&player, conn}
 	USERS_MU.Lock()
 	USERS[userId] = &client
-
-	BROADCAST <- msg
-
 	USERS_MU.Unlock()
 
 	connMsg := fmt.Sprintf("%s connected!", client.Player.Name)
-	BROADCAST <- requests.Message{Player: SERVER_PLAYER, Message: connMsg, Code: requests.Chatter}
+	log.Println(connMsg)
+	BROADCAST <- requests.PlayerMessage{Player: SERVER_PLAYER, Message: connMsg, Code: requests.Chatter}
 
 	// Listen for messages, and add them to the broadcast channel to be fanned out
 	for {
-		var msg requests.Message
+		var msg requests.PlayerMessage
 		err := conn.ReadJSON(&msg)
 		if err != nil {
 			USERS_MU.Lock()
 			delete(USERS, userId)
 			USERS_MU.Unlock()
+
+			_ = s.db.UpdateUserOffline(user.Name)
+			log.Println(user.Name, "went offline.")
+
 			disconnectMsg := fmt.Sprintf("%s disconnected!", client.Player.Name)
-			BROADCAST <- requests.Message{Player: *client.Player, Message: "bye", Code: requests.Valediction}
-			BROADCAST <- requests.Message{Player: SERVER_PLAYER, Message: disconnectMsg, Code: requests.Chatter}
+			BROADCAST <- requests.PlayerMessage{
+				Player:  *client.Player,
+				Message: "bye",
+				Code:    requests.Valediction}
+			BROADCAST <- requests.PlayerMessage{
+				Player:  SERVER_PLAYER,
+				Message: disconnectMsg,
+				Code:    requests.Chatter}
 			return
 		}
 
@@ -175,7 +204,7 @@ func (s *Server) Run() {
 
 	err := s.db.Close()
 	if err != nil {
-		log.Fatalln("Error closing database: ", err.Error())
+		log.Fatalln("Error closing database:", err.Error())
 	}
 	log.Println("Exiting idleinferno.")
 }

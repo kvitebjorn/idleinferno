@@ -19,8 +19,14 @@ type User struct {
 	Password string
 }
 
-type Message struct {
+type PlayerMessage struct {
 	Player  Player     `json:"player"`
+	Message string     `json:"message"`
+	Code    StatusCode `json:"code"`
+}
+
+type UserMessage struct {
+	User    User       `json:"user"`
 	Message string     `json:"message"`
 	Code    StatusCode `json:"code"`
 }

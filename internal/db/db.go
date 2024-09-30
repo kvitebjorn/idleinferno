@@ -19,4 +19,6 @@ type Database interface {
 	DeleteItem(guid string)
 
 	ReadUser(name string) *model.User
+	UpdateUserOnline(name string) error
+	UpdateUserOffline(name string) error
 }

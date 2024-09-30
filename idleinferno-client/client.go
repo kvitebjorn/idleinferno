@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -35,48 +36,25 @@ func (c *Client) Run() {
 	rawHostname, _ := reader.ReadString('\n')
 	parsedHostname := net.ParseIP(strings.TrimSpace(rawHostname))
 	if parsedHostname == nil {
-		log.Fatalln("Invalid server ip: ", parsedHostname)
+		log.Fatalln("Invalid server ip:", parsedHostname)
 	}
 
 	fmt.Print("Server port #: ")
 	rawPortNumber, _ := reader.ReadString('\n')
 	parsedPortNumber, err := strconv.Atoi(strings.TrimSpace(rawPortNumber))
 	if err != nil {
-		log.Fatalln("Invalid port number: ", parsedPortNumber)
-	}
-	c.serverAddress = parsedHostname.String() + ":" + strconv.Itoa(parsedPortNumber)
-	u := url.URL{
-		Scheme: "ws",
-		Host:   c.serverAddress,
-		Path:   "/ws",
+		log.Fatalln("Invalid port number:", parsedPortNumber)
 	}
 
-	log.Println("Dialing idleinferno server...")
-	ws, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
-	c.ws = ws
+	c.serverAddress = parsedHostname.String() + ":" + strconv.Itoa(parsedPortNumber)
+	err = c.getPong()
 	if err != nil {
-		log.Fatalln(
-			"Failed to connect to idleinferno server ",
-			parsedHostname.String(),
-			": ",
-			err.Error(),
-		)
+		log.Fatalln("Unable to reach server.")
+		return
 	}
 	log.Println("Connected to idleinferno server!")
 
 	c.menu()
-
-	// Send the initial hello to server
-	log.Println("Performing handshake with idleinferno server...")
-	var msg requests.Message
-	msg.Message = "hi"
-	msg.Code = requests.Salutations
-	msg.Player = requests.Player{Name: c.name}
-	err = c.ws.WriteJSON(&msg)
-	if err != nil {
-		log.Fatalln("Failed to handshake with idleinferno server: ", err.Error())
-	}
-	log.Println("idleinferno server handshake successful!")
 
 	log.Println("Listening for messages...")
 	c.listen()
@@ -166,6 +144,41 @@ func (c *Client) handleLogin() {
 		c.menu()
 	}
 	c.name = trimmedUsername
+
+	// Set up the websocket
+	u := url.URL{
+		Scheme: "ws",
+		Host:   c.serverAddress,
+		Path:   "/ws",
+	}
+	ws, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
+	c.ws = ws
+	if err != nil {
+		log.Fatalln(
+			"Failed to connect to idleinferno server:",
+			err.Error(),
+		)
+	}
+
+	fmt.Println("Performing handshake with idleinferno server...")
+	var msg requests.UserMessage
+	msg.Message = "hi"
+	msg.Code = requests.Salutations
+	msg.User = requests.User{Name: c.name, Password: trimmedPassword}
+	err = c.ws.WriteJSON(&msg)
+	if err != nil {
+		fmt.Println("Failed to handshake with idleinferno server:", err.Error())
+		c.menu()
+	}
+
+	// Listen for our online message just to make sure...
+	playerMsg, err := c.receiveMessage()
+	if err != nil {
+		fmt.Println("Failed to log in.")
+		c.menu()
+	}
+	log.Println(playerMsg)
+	log.Println("idleinferno server handshake successful!")
 }
 
 func (c *Client) handleSignUp() {
@@ -204,25 +217,44 @@ func (c *Client) handleQuit() {
 }
 
 func (c *Client) sendMessage(code requests.StatusCode, content string) error {
-	var msg requests.Message
+	var msg requests.PlayerMessage
 	msg.Code = code
 	msg.Message = content
 	err := c.ws.WriteJSON(&msg)
 	if err != nil {
-		log.Println("Failed to send message to idleinferno server: ", err.Error())
+		log.Println("Failed to send message to idleinferno server:", err.Error())
 		return err
 	}
 	return nil
 }
 
-func (c *Client) receiveMessage() (requests.Message, error) {
-	var msg requests.Message
+func (c *Client) receiveMessage() (requests.PlayerMessage, error) {
+	var msg requests.PlayerMessage
 	err := c.ws.ReadJSON(&msg)
 	if err != nil {
-		log.Println("Failed to read message from idleinferno server: ", err.Error())
+		log.Println("Failed to read message from idleinferno server:", err.Error())
 		return msg, err
 	}
 	return msg, nil
+}
+
+func (c *Client) getPong() error {
+	requestURL := fmt.Sprintf("http://%s/ping", c.serverAddress)
+	req, err := http.NewRequest(http.MethodGet, requestURL, nil)
+	if err != nil {
+		return err
+	}
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+
+	if res.StatusCode != 200 {
+		return errors.New("not pong :(")
+	}
+
+	return nil
 }
 
 func (c *Client) getUser(name string) (*requests.User, error) {
@@ -267,10 +299,10 @@ func (c *Client) listen() {
 	}
 
 	for {
-		var msg requests.Message
+		var msg requests.PlayerMessage
 		err := c.ws.ReadJSON(&msg)
 		if err != nil {
-			log.Println("Error receiving idleinferno server message: ", err.Error())
+			log.Println("Error receiving idleinferno server message:", err.Error())
 			c.disconnect()
 			return
 		}
