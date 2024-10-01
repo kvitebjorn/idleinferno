@@ -79,20 +79,17 @@ func (w *World) Walk() {
 	// TODO: we don't account for items in any way yet
 	//       in the future, if landing on an item, potentially equip it
 	// Make all players walk 1 in a random direction; only straight lines for now
-	for y := 0; y < WorldSize; y++ {
-		for x := 0; x < WorldSize; x++ {
-			player := w.PlayerGrid[y][x]
-			if player == nil {
-				continue
-			}
-			emptyNeighborCoords := w.getEmptyNeighborCoords(player.Location)
-			emptyNeighborCoordsLen := len(emptyNeighborCoords)
-			destCoords := emptyNeighborCoords[rand.IntN(emptyNeighborCoordsLen)]
-			w.PlayerGrid[y][x] = nil
-			w.PlayerGrid[destCoords.Y][destCoords.X] = player
-			player.Location.X = destCoords.X
-			player.Location.Y = destCoords.Y
+	for _, player := range w.Players {
+		emptyNeighborCoords := w.getEmptyNeighborCoords(player.Location)
+		emptyNeighborCoordsLen := len(emptyNeighborCoords)
+		if emptyNeighborCoordsLen == 0 {
+			continue
 		}
+		destCoords := emptyNeighborCoords[rand.IntN(emptyNeighborCoordsLen)]
+		w.PlayerGrid[player.Location.Y][player.Location.X] = nil
+		w.PlayerGrid[destCoords.Y][destCoords.X] = player
+		player.Location.X = destCoords.X
+		player.Location.Y = destCoords.Y
 	}
 }
 
