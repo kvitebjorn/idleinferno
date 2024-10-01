@@ -6,8 +6,8 @@ type Database interface {
 	Init()
 	Close() error
 
-	CreatePlayer(*model.Player) *model.Player
-	ReadPlayer(guid string) *model.Player
+	CreatePlayer(*model.User) *model.Player
+	ReadPlayer(name string) *model.Player
 	ReadPlayers() []*model.Player
 	UpdatePlayer(*model.Player) int64
 	DeletePlayer(guid string)
@@ -19,6 +19,7 @@ type Database interface {
 	DeleteItem(guid string)
 
 	ReadUser(name string) *model.User
+	ReadUserByEmail(email string) *model.User
 	UpdateUserOnline(name string) error
 	UpdateUserOffline(name string) error
 }

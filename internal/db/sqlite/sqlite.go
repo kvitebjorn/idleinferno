@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/google/uuid"
 	_ "github.com/mattn/go-sqlite3"
 
 	"github.com/kvitebjorn/idleinferno/internal/db/sqlite/queries"
@@ -56,9 +57,28 @@ func (s *Sqlite) Close() error {
 	return s.db.Close()
 }
 
-func (s *Sqlite) CreatePlayer(*model.Player) *model.Player {
-	// TODO
-	return nil
+func (s *Sqlite) CreatePlayer(user *model.User) *model.Player {
+	stmt, err := s.db.Prepare(queries.CreatePlayerSql)
+	checkErr(err)
+	defer stmt.Close()
+
+	player := &model.Player{}
+	player.Id = uuid.New().String()
+	player.Name = user.Name
+	player.Class = user.Class
+
+	res, err := stmt.Exec(
+		player.Id,
+		user.Name,
+		user.Email,
+		user.Password,
+		user.Class)
+	checkErr(err)
+
+	_, err = res.RowsAffected()
+	checkErr(err)
+
+	return player
 }
 
 func (s *Sqlite) ReadPlayer(name string) *model.Player {
@@ -104,18 +124,32 @@ func (s *Sqlite) ReadUser(name string) *model.User {
 	err := row.Scan(&user.Name, &user.Password, &user.Online)
 	if err != nil {
 		log.Println("Error querying for user:", err.Error())
+		return nil
+	}
+
+	return user
+}
+
+func (s *Sqlite) ReadUserByEmail(email string) *model.User {
+	row := s.db.QueryRow(queries.ReadUserByEmailSql, email)
+
+	user := &model.User{}
+	err := row.Scan(&user.Name, &user.Password, &user.Online)
+	if err != nil {
+		log.Println("Error querying for user:", err.Error())
+		return nil
 	}
 
 	return user
 }
 
 func (s *Sqlite) UpdatePlayer(player *model.Player) int64 {
-	// TODO: rest of the fields
+	// TODO: rest of the fields, right now we only update location
 	stmt, err := s.db.Prepare(queries.UpdatePlayerSql)
 	checkErr(err)
 	defer stmt.Close()
 
-	res, err := stmt.Exec(player.Location.X, player.Location.Y, player.Id)
+	res, err := stmt.Exec(player.Location.X, player.Location.Y, player.Name)
 	checkErr(err)
 
 	affected, err := res.RowsAffected()

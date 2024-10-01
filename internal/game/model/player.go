@@ -12,5 +12,7 @@ type Player struct {
 type User struct {
 	Name     string
 	Password string
+	Email    string
+	Class    string
 	Online   bool
 }

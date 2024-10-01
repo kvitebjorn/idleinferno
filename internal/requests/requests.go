@@ -17,6 +17,7 @@ type User struct {
 	Name     string
 	Email    string
 	Password string
+	Class    string
 }
 
 type PlayerMessage struct {

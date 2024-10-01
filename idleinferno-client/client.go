@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/mail"
 	"net/url"
 	"os"
 	"regexp"
@@ -79,7 +81,6 @@ func (c *Client) menu() {
 	switch char {
 	case 'u':
 		c.handleSignUp()
-		c.menu()
 		break
 	case 'l':
 		c.handleLogin()
@@ -182,24 +183,86 @@ func (c *Client) handleLogin() {
 }
 
 func (c *Client) handleSignUp() {
+	reader := bufio.NewReader(os.Stdin)
+
 	fmt.Println("")
-	fmt.Println("Create a player")
-	//     ask for username
-	//       search for existing usernames, repeat question if it exists
-	//       should be > 0 alphanumeric only chars
-	//     ask for class
-	//       should be > 0 alphanumeric only chars
-	//     ask for email
-	//       search for existing email, repeat question if it exists
-	//       use an email validator, or a regex of form *@*.*
-	//     ask for password
-	//       should be > 0 non-white-space chars
-	//     hash email and password
-	//       will need to implement auth stuff for this
-	//     store in db
-	//       will need a new request for this - CreatePlayer
-	//     tell them we successfully created the user
-	//     return to main menu
+	fmt.Println("Sign up")
+
+	fmt.Print("username: ")
+	rawUsername, _ := reader.ReadString('\n')
+	trimmedUsername := strings.TrimSpace(rawUsername)
+	isValid := checkInput(trimmedUsername)
+	if !isValid {
+		fmt.Println("Invalid username, alphanumeric chars only allowed.")
+		c.handleSignUp()
+	}
+	maybeUser, _ := c.getUser(trimmedUsername)
+	if maybeUser != nil {
+		fmt.Println("User name already exists.")
+		c.handleSignUp()
+	}
+
+	fmt.Print("email: ")
+	rawEmail, _ := reader.ReadString('\n')
+	trimmedEmail := strings.TrimSpace(rawEmail)
+	_, err := mail.ParseAddress(trimmedEmail)
+	if err != nil {
+		fmt.Println("Invalid email.")
+		c.handleSignUp()
+	}
+	maybeUser, _ = c.getUserByEmail(trimmedEmail)
+	if maybeUser != nil {
+		fmt.Println("There is already a user for this email.")
+		c.handleSignUp()
+	}
+
+	fmt.Print("password: ")
+	rawPassword1, _ := reader.ReadString('\n')
+	trimmedPassword1 := strings.TrimSpace(rawPassword1)
+	if len(trimmedPassword1) < 6 {
+		fmt.Println("Password length requirement (6) not met.")
+		c.handleSignUp()
+	}
+
+	fmt.Print("password again: ")
+	rawPassword2, _ := reader.ReadString('\n')
+	trimmedPassword2 := strings.TrimSpace(rawPassword2)
+
+	if trimmedPassword1 != trimmedPassword2 {
+		fmt.Println("Passwords do not match.")
+		c.handleSignUp()
+	}
+
+	fmt.Print("class: ")
+	rawClass, _ := reader.ReadString('\n')
+	trimmedClass := strings.TrimSpace(rawClass)
+	isValid = checkInput(trimmedClass)
+	if !isValid {
+		fmt.Println("Invalid class, alphanumeric chars only allowed.")
+		c.handleSignUp()
+	}
+
+	hashedPassword, err := auth.Hash(trimmedPassword1)
+	if err != nil {
+		fmt.Println("Error hashing password:", err.Error())
+		c.handleSignUp()
+	}
+
+	user := requests.User{
+		Name:     trimmedUsername,
+		Email:    trimmedEmail,
+		Password: hashedPassword,
+		Class:    trimmedClass,
+	}
+
+	err = c.createUser(&user)
+	if err != nil {
+		fmt.Println("Failed to create user:", err.Error())
+		c.handleSignUp()
+	}
+
+	fmt.Println("Sign up successful, please log in!")
+	c.handleLogin()
 }
 
 func (c *Client) handleInfo() {
@@ -286,6 +349,63 @@ func (c *Client) getUser(name string) (*requests.User, error) {
 	}
 
 	return user, nil
+}
+
+func (c *Client) getUserByEmail(email string) (*requests.User, error) {
+	requestURL := fmt.Sprintf("http://%s/user/e/%s", c.serverAddress, email)
+	req, err := http.NewRequest(http.MethodGet, requestURL, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if res.StatusCode != 200 {
+		return nil, err
+	}
+
+	resBody, err := io.ReadAll(res.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	user := &requests.User{}
+	err = json.Unmarshal(resBody, user)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return user, nil
+}
+
+func (c *Client) createUser(user *requests.User) error {
+	requestURL := fmt.Sprintf("http://%s/user/create", c.serverAddress)
+	jsonBody, err := json.Marshal(user)
+	bodyReader := bytes.NewReader(jsonBody)
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, requestURL, bodyReader)
+	req.Header.Set("Content-Type", "application/json")
+	if err != nil {
+		return err
+	}
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+
+	if res.StatusCode != 200 {
+		return err
+	}
+
+	return nil
 }
 
 func (c *Client) listen() {

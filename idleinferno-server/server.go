@@ -20,7 +20,8 @@ import (
 )
 
 type Server struct {
-	db db.Database
+	db   db.Database
+	game *game.Game
 }
 
 type Client struct {
@@ -35,9 +36,11 @@ var (
 
 func (s *Server) Start() {
 	myRouter := mux.NewRouter().StrictSlash(true)
-	myRouter.HandleFunc("/", home)
-	myRouter.HandleFunc("/ping", pong)
-	myRouter.HandleFunc("/user/{name}", s.getUser)
+	myRouter.HandleFunc("/", home).Methods(http.MethodGet)
+	myRouter.HandleFunc("/ping", pong).Methods(http.MethodGet)
+	myRouter.HandleFunc("/user/{name}", s.getUser).Methods(http.MethodGet)
+	myRouter.HandleFunc("/user/e/{email}", s.getUserByEmail).Methods(http.MethodGet)
+	myRouter.HandleFunc("/user/create", s.createUser).Methods(http.MethodPost)
 	myRouter.HandleFunc("/ws", s.handleConnection)
 
 	go handleMessages()
@@ -81,6 +84,39 @@ func (s *Server) getUser(w http.ResponseWriter, r *http.Request) {
 		Password: maybeUser.Password,
 	}
 	json.NewEncoder(w).Encode(encodedUser)
+}
+
+func (s *Server) getUserByEmail(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	key := vars["email"]
+	maybeUser := s.db.ReadUserByEmail(key)
+	if maybeUser == nil {
+		return
+	}
+	encodedUser := requests.User{
+		Name:     maybeUser.Name,
+		Password: maybeUser.Password,
+	}
+	json.NewEncoder(w).Encode(encodedUser)
+}
+
+func (s *Server) createUser(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	var user requests.User
+	_ = json.NewDecoder(r.Body).Decode(&user)
+	modelUser := model.User{
+		Name:     user.Name,
+		Email:    user.Email,
+		Password: user.Password,
+		Class:    user.Class,
+	}
+	dbUser := s.db.CreatePlayer(&modelUser)
+	if dbUser == nil {
+		log.Println("Failed to create user", modelUser.Name)
+		return
+	}
+	log.Println("Created user", modelUser.Name)
+	json.NewEncoder(w).Encode(&user)
 }
 
 func (s *Server) handleConnection(w http.ResponseWriter, r *http.Request) {
@@ -131,6 +167,14 @@ func (s *Server) handleConnection(w http.ResponseWriter, r *http.Request) {
 	USERS[userId] = &client
 	USERS_MU.Unlock()
 
+	gamePlayer := s.db.ReadPlayer(player.Name)
+	updatedGamePlayer, err := s.game.World.Login(gamePlayer)
+	if err != nil {
+		log.Println(err.Error())
+		return
+	}
+	_ = s.db.UpdatePlayer(updatedGamePlayer)
+
 	connMsg := fmt.Sprintf("%s connected!", client.Player.Name)
 	log.Println(connMsg)
 	BROADCAST <- requests.PlayerMessage{Player: SERVER_PLAYER, Message: connMsg, Code: requests.Chatter}
@@ -144,6 +188,7 @@ func (s *Server) handleConnection(w http.ResponseWriter, r *http.Request) {
 			delete(USERS, userId)
 			USERS_MU.Unlock()
 
+			s.game.World.Logout(gamePlayer)
 			_ = s.db.UpdateUserOffline(user.Name)
 			log.Println(user.Name, "went offline.")
 
@@ -186,7 +231,7 @@ func (s *Server) Run() {
 
 	log.Println("Starting idleinferno...")
 	log.Println("Initializing world...")
-	game := game.Game{World: s.initWorld()}
+	s.game = &game.Game{World: s.initWorld()}
 	log.Println("World initialized successfully!")
 
 	// Start the request listener
@@ -194,11 +239,11 @@ func (s *Server) Run() {
 
 	// Start the game
 	log.Println("Running main game loop...")
-	game.Run()
+	s.game.Run(s.saveWorld)
 	log.Println("Main game loop exited.")
 
 	log.Println("Saving the world...")
-	s.saveWorld(game.World)
+	s.saveWorld(s.game.World)
 	log.Println("World saved!")
 
 	err := s.db.Close()
@@ -214,6 +259,7 @@ func (s *Server) initWorld() *model.World {
 
 	world := &model.World{}
 
+	// TODO: maybe don't do this until they log in...
 	for _, p := range players {
 		world.Players = append(world.Players, p)
 		world.PlayerGrid[p.Location.Y][p.Location.X] = p

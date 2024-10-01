@@ -1,9 +1,11 @@
 package model
 
 import (
+	"errors"
 	"fmt"
 	"math/rand/v2"
 	"strings"
+	"sync"
 	"text/tabwriter"
 )
 
@@ -27,9 +29,53 @@ type World struct {
 
 	Items    []*Item
 	ItemGrid [WorldSize][WorldSize]*Item
+
+	mut sync.Mutex
+}
+
+func (w *World) Login(player *Player) (*Player, error) {
+	w.mut.Lock()
+	defer w.mut.Unlock()
+
+	if w.PlayerGrid[player.Location.Y][player.Location.X] == nil {
+		w.PlayerGrid[player.Location.Y][player.Location.X] = player
+		w.Players = append(w.Players, player)
+		return player, nil
+	}
+
+	for i := 0; i < WorldSize; i++ {
+		for j := 0; j < WorldSize; j++ {
+			if w.PlayerGrid[i][j] == nil {
+				w.PlayerGrid[i][j] = player
+				player.Location.X = j
+				player.Location.Y = i
+				w.Players = append(w.Players, player)
+				return player, nil
+			}
+		}
+	}
+
+	return nil, errors.New("Unable to place player in world.")
+}
+
+func (w *World) Logout(player *Player) {
+	w.mut.Lock()
+	defer w.mut.Unlock()
+
+	newPlayers := make([]*Player, 0)
+	for _, p := range w.Players {
+		if p.Name == player.Name {
+			continue
+		}
+		newPlayers = append(newPlayers, p)
+	}
+	w.Players = newPlayers
+	w.PlayerGrid[player.Location.Y][player.Location.X] = nil
 }
 
 func (w *World) Walk() {
+	w.mut.Lock()
+	defer w.mut.Unlock()
 	// TODO: we don't account for items in any way yet
 	//       in the future, if landing on an item, potentially equip it
 	// Make all players walk 1 in a random direction; only straight lines for now
@@ -50,7 +96,10 @@ func (w *World) Walk() {
 	}
 }
 
-func (w World) ToString() string {
+func (w *World) ToString() string {
+	w.mut.Lock()
+	defer w.mut.Unlock()
+
 	var sb strings.Builder
 	tw := tabwriter.NewWriter(&sb, 4, 1, 1, ' ', 0)
 	fmt.Fprintln(tw, "Current state of the world:")
@@ -88,7 +137,7 @@ func (w World) ToString() string {
 	return sb.String()
 }
 
-func (w World) getEmptyNeighborCoords(c *Coordinates) []Coordinates {
+func (w *World) getEmptyNeighborCoords(c *Coordinates) []Coordinates {
 	empty := make([]Coordinates, 0)
 	dirs := [...]Coordinates{Up, Down, Left, Right}
 	for _, dir := range dirs {

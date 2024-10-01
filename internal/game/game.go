@@ -11,17 +11,16 @@ type Game struct {
 	World *model.World
 }
 
-func (g *Game) Run() {
+func (g *Game) Run(saveFn func(world *model.World)) {
 	ticker := time.NewTicker(60 * time.Second)
 	quit := make(chan struct{})
 	for {
 		select {
 
 		case <-ticker.C:
-			// TODO: for debugging only, remove later
-			log.Println(g.World.ToString())
-
 			g.tick()
+			saveFn(g.World)
+			log.Println(g.World.ToString())
 
 		case <-quit:
 			ticker.Stop()

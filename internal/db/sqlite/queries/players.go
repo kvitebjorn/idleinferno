@@ -27,10 +27,14 @@ const CreatePlayersTableSql string = `CREATE TABLE players (
 
 // TODO: the rest of the fields
 const (
+	CreatePlayerSql string = `INSERT INTO players
+	(id, name, email, password, class, xcoord, ycoord, level, xp, itemLevel, online, created, enabled)
+	VALUES (?, ?, ?, ?, ?, 0, 0, 0, 0, 0, 0, datetime(), 1)`
 	ReadPlayerSql   string = `SELECT id, name, xcoord, ycoord FROM players WHERE name = ?`
 	ReadPlayersSql  string = `SELECT id, name, xcoord, ycoord FROM players`
-	UpdatePlayerSql string = `UPDATE players SET xcoord = ?, ycoord = ? WHERE id = ?; `
+	UpdatePlayerSql string = `UPDATE players SET xcoord = ?, ycoord = ? WHERE name = ?; `
 
-	ReadUserSql   string = `SELECT name, password, online FROM players WHERE name = ?`
-	UpdateUserSql string = `UPDATE players SET online = ? WHERE name = ?`
+	ReadUserSql        string = `SELECT name, password, online FROM players WHERE name = ?`
+	ReadUserByEmailSql string = `SELECT name, password, online FROM players WHERE email = ?`
+	UpdateUserSql      string = `UPDATE players SET online = ? WHERE name = ?`
 )
