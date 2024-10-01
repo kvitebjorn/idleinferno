@@ -266,13 +266,31 @@ func (c *Client) handleSignUp() {
 }
 
 func (c *Client) handleInfo() {
+	reader := bufio.NewReader(os.Stdin)
 	fmt.Println("")
-	fmt.Println("Get player info")
-	//     ask for username to lookup
-	//       should be > 0 alphanumeric only chars
-	//     return a text dump of user, if it exists
-	//       will need a new request for this - ReadPlayer (by 'name')
-	//     return to main menu
+	fmt.Println("Player info")
+
+	fmt.Print("name: ")
+	rawName, _ := reader.ReadString('\n')
+	trimmedName := strings.TrimSpace(rawName)
+	isValid := checkInput(trimmedName)
+	if !isValid {
+		fmt.Println("Invalid name, alphanumeric chars only allowed.")
+		return
+	}
+	maybePlayer, err := c.getPlayer(trimmedName)
+	if maybePlayer == nil || err != nil {
+		fmt.Println("Can't find that player.")
+		return
+	}
+
+	fmt.Println("class:", maybePlayer.Class)
+	fmt.Println("xp:", maybePlayer.Xp)
+	fmt.Println("level:", maybePlayer.Level)
+	fmt.Println("item level:", maybePlayer.ItemLevel)
+	fmt.Println("coordinates:", "(", maybePlayer.X, ",", maybePlayer.Y, ")")
+	fmt.Println("created:", maybePlayer.Created)
+	fmt.Println("online:", maybePlayer.Online)
 }
 
 func (c *Client) handleQuit() {
@@ -318,6 +336,37 @@ func (c *Client) getPong() error {
 	}
 
 	return nil
+}
+
+func (c *Client) getPlayer(name string) (*requests.Player, error) {
+	requestURL := fmt.Sprintf("http://%s/player/%s", c.serverAddress, name)
+	req, err := http.NewRequest(http.MethodGet, requestURL, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if res.StatusCode != 200 {
+		return nil, err
+	}
+
+	resBody, err := io.ReadAll(res.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	user := &requests.Player{}
+	err = json.Unmarshal(resBody, user)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return user, nil
 }
 
 func (c *Client) getUser(name string) (*requests.User, error) {

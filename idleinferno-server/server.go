@@ -43,6 +43,7 @@ func (s *Server) Start() {
 	myRouter.HandleFunc("/user/{name}", s.getUser).Methods(http.MethodGet)
 	myRouter.HandleFunc("/user/e/{email}", s.getUserByEmail).Methods(http.MethodGet)
 	myRouter.HandleFunc("/user/create", s.createUser).Methods(http.MethodPost)
+	myRouter.HandleFunc("/player/{name}", s.getPlayer).Methods(http.MethodGet)
 	myRouter.HandleFunc("/ws", s.handleConnection)
 
 	go handleMessages()
@@ -72,6 +73,27 @@ func home(w http.ResponseWriter, r *http.Request) {
 
 func pong(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Pong!")
+}
+
+func (s *Server) getPlayer(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	key := vars["name"]
+	maybePlayer := s.db.ReadPlayer(key)
+	if maybePlayer == nil {
+		return
+	}
+	encodedPlayer := requests.Player{
+		Name:      maybePlayer.Name,
+		Class:     maybePlayer.Class,
+		Xp:        maybePlayer.Stats.Xp,
+		Level:     maybePlayer.Stats.Level,
+		ItemLevel: maybePlayer.Stats.ItemLevel,
+		X:         maybePlayer.Location.X,
+		Y:         maybePlayer.Location.Y,
+		Created:   maybePlayer.Stats.Created,
+		Online:    maybePlayer.Stats.Online,
+	}
+	json.NewEncoder(w).Encode(encodedPlayer)
 }
 
 func (s *Server) getUser(w http.ResponseWriter, r *http.Request) {

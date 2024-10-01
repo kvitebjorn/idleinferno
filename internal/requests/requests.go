@@ -10,7 +10,15 @@ const (
 )
 
 type Player struct {
-	Name string
+	Name      string
+	Class     string
+	Xp        uint64
+	Level     uint
+	ItemLevel uint
+	X         int
+	Y         int
+	Online    bool
+	Created   string
 }
 
 type User struct {

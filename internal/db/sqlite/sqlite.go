@@ -83,12 +83,27 @@ func (s *Sqlite) CreatePlayer(user *model.User) *model.Player {
 
 func (s *Sqlite) ReadPlayer(name string) *model.Player {
 	row := s.db.QueryRow(queries.ReadPlayerSql, name)
-	player := &model.Player{Location: &model.Coordinates{X: 0, Y: 0}}
 
-	// TODO: scan the rest
-	err := row.Scan(&player.Id, &player.Name, &player.Location.X, &player.Location.Y)
+	player := &model.Player{
+		Location: &model.Coordinates{X: 0, Y: 0},
+		Stats:    &model.Stats{},
+	}
+
+	err := row.Scan(
+		&player.Id,
+		&player.Name,
+		&player.Class,
+		&player.Location.X,
+		&player.Location.Y,
+		&player.Stats.Xp,
+		&player.Stats.Level,
+		&player.Stats.ItemLevel,
+		&player.Stats.Created,
+		&player.Stats.Online,
+	)
+
 	if err != nil {
-		log.Println("Error querying for player:", err.Error())
+		return nil
 	}
 
 	return player
@@ -102,10 +117,23 @@ func (s *Sqlite) ReadPlayers() []*model.Player {
 
 	players := make([]*model.Player, 0)
 	for rows.Next() {
-		player := &model.Player{Location: &model.Coordinates{X: 0, Y: 0}}
+		player := &model.Player{
+			Location: &model.Coordinates{X: 0, Y: 0},
+			Stats:    &model.Stats{},
+		}
 
-		// TODO: scan the rest
-		err = rows.Scan(&player.Id, &player.Name, &player.Location.X, &player.Location.Y)
+		err = rows.Scan(
+			&player.Id,
+			&player.Name,
+			&player.Class,
+			&player.Location.X,
+			&player.Location.Y,
+			&player.Stats.Xp,
+			&player.Stats.Level,
+			&player.Stats.ItemLevel,
+			&player.Stats.Created,
+			&player.Stats.Online,
+		)
 		checkErr(err)
 
 		players = append(players, player)
@@ -123,7 +151,6 @@ func (s *Sqlite) ReadUser(name string) *model.User {
 	user := &model.User{}
 	err := row.Scan(&user.Name, &user.Password, &user.Online)
 	if err != nil {
-		log.Println("Error querying for user:", err.Error())
 		return nil
 	}
 
