@@ -6,6 +6,8 @@ import (
 	"log"
 	"math"
 	"net/http"
+	"os"
+	"os/signal"
 	"sync"
 	"sync/atomic"
 
@@ -237,6 +239,21 @@ func (s *Server) Run() {
 	// Start the request listener
 	go s.Start()
 
+	// Start the signal handler
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	go func() {
+		for _ = range c {
+			// sig is a ^C, handle it
+			s.saveWorld(s.game.World)
+			for _, p := range s.game.World.Players {
+				s.db.UpdateUserOffline(p.Name)
+			}
+			log.Fatalln("Server interrupted.")
+			os.Exit(1)
+		}
+	}()
+
 	// Start the game
 	log.Println("Running main game loop...")
 	s.game.Run(s.saveWorld)
@@ -254,16 +271,10 @@ func (s *Server) Run() {
 }
 
 func (s *Server) initWorld() *model.World {
-	players := s.db.ReadPlayers()
 	items := s.db.ReadItems()
 
 	world := &model.World{}
 
-	// TODO: maybe don't do this until they log in...
-	for _, p := range players {
-		world.Players = append(world.Players, p)
-		world.PlayerGrid[p.Location.Y][p.Location.X] = p
-	}
 	for _, i := range items {
 		world.Items = append(world.Items, i)
 		world.ItemGrid[i.Location.Y][i.Location.X] = i
