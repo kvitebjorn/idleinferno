@@ -31,5 +31,6 @@ func (g *Game) Run(saveFn func(world *model.World)) {
 
 func (g *Game) tick() {
 	g.World.Walk()
+	g.World.SearchForItem()
 	return
 }

@@ -19,5 +19,4 @@ type Item struct {
 	Name      string
 	ItemLevel uint
 	Class     ItemClass
-	Location  *Coordinates
 }

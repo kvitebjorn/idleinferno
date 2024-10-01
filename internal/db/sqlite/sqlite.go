@@ -216,6 +216,7 @@ func (s *Sqlite) UpdateUserOffline(name string) error {
 
 func (s *Sqlite) DeletePlayer(guid string) {
 	// TODO
+	// We don't delete, just mark 'enabled' to false/0
 	return
 }
 

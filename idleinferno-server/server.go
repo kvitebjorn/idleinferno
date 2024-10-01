@@ -293,14 +293,7 @@ func (s *Server) Run() {
 }
 
 func (s *Server) initWorld() *model.World {
-	items := s.db.ReadItems()
-
 	world := &model.World{}
-
-	for _, i := range items {
-		world.Items = append(world.Items, i)
-		world.ItemGrid[i.Location.Y][i.Location.X] = i
-	}
 
 	log.Println(world.ToString())
 	return world
@@ -311,6 +304,5 @@ func (s *Server) saveWorld(world *model.World) {
 		_ = s.db.UpdatePlayer(player)
 	}
 
-	// TODO: save the rest of the state
 	return
 }
