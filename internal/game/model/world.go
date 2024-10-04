@@ -95,11 +95,7 @@ func (w *World) Scavenge() {
 	defer w.mut.Unlock()
 
 	for _, player := range w.Players {
-		chance := rand.IntN(int(player.Stats.Level() + 2))
-		log.Println(player.Name, "rolled a", chance)
-		if chance > int(player.Stats.Level()/2) {
-			player.AcquireItem()
-		}
+		player.FindItem()
 	}
 }
 

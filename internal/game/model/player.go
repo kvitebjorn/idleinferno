@@ -1,6 +1,7 @@
 package model
 
 import (
+	"fmt"
 	"log"
 	"math/rand/v2"
 )
@@ -33,20 +34,86 @@ func (p Player) ItemLevel() int {
 	return sum
 }
 
-func (p *Player) AcquireItem() {
+/*
+For a level 20 player,
+
+	  the percentage chance to find items of the following levels is:
+
+		Level 1: 7.97%
+		Level 5: 6.52%
+		Level 10: 4.71%
+		Level 15: 2.90%
+		Level 20: 1.09%
+*/
+func (p *Player) FindItem() {
+	// Base chance of finding an item
+	playerRollToFindTheItem := float64(p.Stats.Level()+2) / 100.0
+
+	// Random chance to find an item
+	chanceToFindTheItem := rand.Float64()
+
+	rollMsg := fmt.Sprintf("%s rolled a %d to find an item (%d)",
+		p.Name, int(playerRollToFindTheItem*100), int(chanceToFindTheItem*100))
+	log.Println(rollMsg)
+	if chanceToFindTheItem > playerRollToFindTheItem {
+		log.Println(p.Name, "found no items.")
+		return
+	}
+
+	// Item class
 	itemClass := rand.IntN(9)
-	itemLevel := rand.IntN(p.Stats.Level() + 2)
-	if p.Inventory[itemClass] != nil &&
-		p.Inventory[itemClass].ItemLevel > itemLevel {
+
+	// Randomly determine item level with bias towards lower levels
+	maxLevel := p.Stats.Level() + 2
+	itemLevel := weightedRandomItemLevel(maxLevel)
+
+	// Item level adjustment
+	k := 2.0 // the scale factor for difficulty
+	itemLevelChance := 1.0 / float64((itemLevel+1)^int(k))
+
+	// Calculate final chance of getting this item level
+	finalChance := playerRollToFindTheItem * itemLevelChance
+
+	if rand.Float64() > finalChance {
+		log.Println(p.Name, "found no items.")
+	}
+
+	// Check if the found item is worse than existing one
+	if p.Inventory[itemClass] != nil && p.Inventory[itemClass].ItemLevel > itemLevel {
 		log.Println(p.Name,
 			"found a new item, but it's worse than their",
 			p.Inventory[itemClass].ToString())
 		return
 	}
-	// TODO: enable this when we have Stats:
-	//  p.Stats.ItemLevel += itemLevel - p.Inventory[itemClass].ItemLevel
+
+	// Create and add the new item
 	newItem := createItem(ItemClass(itemClass), itemLevel)
 	newItem.Player = p.Name
 	p.Inventory[itemClass] = newItem
 	log.Println(p.Name, "acquired", newItem.ToString())
+}
+
+// weightedRandomItemLevel generates a random item level with bias towards lower levels
+func weightedRandomItemLevel(maxLevel int) int {
+	// Create a weighted distribution
+	weights := make([]float64, maxLevel+1)
+	totalWeight := 0.0
+
+	for i := 0; i <= maxLevel; i++ {
+		// Higher weight for lower levels
+		weights[i] = float64(maxLevel - i + 1) // e.g., maxLevel=3 -> weights = [4, 3, 2, 1]
+		totalWeight += weights[i]
+	}
+
+	// Randomly select an item level based on weights
+	roll := rand.Float64() * totalWeight
+	for level, weight := range weights {
+		if roll < weight {
+			return level
+		}
+		roll -= weight
+	}
+
+	// Fallback (should not be reached)
+	return maxLevel
 }

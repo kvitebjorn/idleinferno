@@ -11,7 +11,10 @@ type Stats struct {
 }
 
 const (
-	C = 10
+	// With these factors, it takes 2.5 years to reach level 100
+	// if the player remains logged in 24/7...
+	// and the value of `xp` will never exceed a uint64 until like 350 trillion years...
+	C = 20
 	x = 2
 )
 
