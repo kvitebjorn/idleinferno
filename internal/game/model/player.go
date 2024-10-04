@@ -24,7 +24,7 @@ type User struct {
 
 func (p *Player) AcquireItem() {
 	itemClass := rand.IntN(9)
-	itemLevel := rand.IntN(p.Stats.Level)
+	itemLevel := rand.IntN(p.Stats.Level + 2)
 	if p.Inventory[itemClass] != nil &&
 		p.Inventory[itemClass].ItemLevel > itemLevel {
 		log.Println(p.Name,
