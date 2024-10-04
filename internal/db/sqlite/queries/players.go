@@ -8,7 +8,6 @@ const CreatePlayersTableSql string = `CREATE TABLE players (
 		email	    TEXT NOT NULL UNIQUE,
 		password	TEXT NOT NULL,
 		class     TEXT NOT NULL,
-		level     INTEGER,
 		xp        INTEGER,
 		online    INTEGER,
 		created   TEXT NOT NULL,
@@ -17,11 +16,11 @@ const CreatePlayersTableSql string = `CREATE TABLE players (
 
 const (
 	CreatePlayerSql string = `INSERT INTO players
-	(id, name, email, password, class, xcoord, ycoord, level, xp, online, created, enabled)
+	(id, name, email, password, class, xcoord, ycoord, xp, online, created, enabled)
 	VALUES (?, ?, ?, ?, ?, 0, 0, 1, 0, 0, datetime(), 1)`
-	ReadPlayerSql   string = `SELECT id, name, class, xcoord, ycoord, xp, level, created, online FROM players WHERE name = ?`
-	ReadPlayersSql  string = `SELECT id, name, class, xcoord, ycoord, xp, level, created, online FROM players`
-	UpdatePlayerSql string = `UPDATE players SET xcoord = ?, ycoord = ? WHERE name = ?;`
+	ReadPlayerSql   string = `SELECT id, name, class, xcoord, ycoord, xp, created, online FROM players WHERE name = ?`
+	ReadPlayersSql  string = `SELECT id, name, class, xcoord, ycoord, xp, created, online FROM players`
+	UpdatePlayerSql string = `UPDATE players SET xcoord = ?, ycoord = ?, xp = ? WHERE name = ?;`
 
 	ReadUserSql        string = `SELECT name, password, online FROM players WHERE name = ?`
 	ReadUserByEmailSql string = `SELECT name, password, online FROM players WHERE email = ?`

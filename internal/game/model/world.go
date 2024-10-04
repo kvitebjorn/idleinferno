@@ -76,6 +76,7 @@ func (w *World) Wander() {
 	defer w.mut.Unlock()
 
 	for _, player := range w.Players {
+		player.Stats.Xp += 1
 		emptyNeighborCoords := w.getEmptyNeighborCoords(player.Location)
 		emptyNeighborCoordsLen := len(emptyNeighborCoords)
 		if emptyNeighborCoordsLen == 0 {
@@ -94,9 +95,9 @@ func (w *World) Scavenge() {
 	defer w.mut.Unlock()
 
 	for _, player := range w.Players {
-		chance := rand.IntN(int(player.Stats.Level + 2))
+		chance := rand.IntN(int(player.Stats.Level() + 2))
 		log.Println(player.Name, "rolled a", chance)
-		if chance > int(player.Stats.Level/2) {
+		if chance > int(player.Stats.Level()/2) {
 			player.AcquireItem()
 		}
 	}

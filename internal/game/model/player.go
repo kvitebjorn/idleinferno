@@ -35,7 +35,7 @@ func (p Player) ItemLevel() int {
 
 func (p *Player) AcquireItem() {
 	itemClass := rand.IntN(9)
-	itemLevel := rand.IntN(p.Stats.Level + 2)
+	itemLevel := rand.IntN(p.Stats.Level() + 2)
 	if p.Inventory[itemClass] != nil &&
 		p.Inventory[itemClass].ItemLevel > itemLevel {
 		log.Println(p.Name,

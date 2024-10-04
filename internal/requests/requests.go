@@ -12,7 +12,7 @@ const (
 type Player struct {
 	Name      string
 	Class     string
-	Xp        int
+	Xp        uint64
 	Level     int
 	ItemLevel int
 	X         int

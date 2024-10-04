@@ -83,14 +83,15 @@ func (s *Server) getPlayer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	encodedPlayer := requests.Player{
-		Name:    maybePlayer.Name,
-		Class:   maybePlayer.Class,
-		Xp:      maybePlayer.Stats.Xp,
-		Level:   maybePlayer.Stats.Level,
-		X:       maybePlayer.Location.X,
-		Y:       maybePlayer.Location.Y,
-		Created: maybePlayer.Stats.Created,
-		Online:  maybePlayer.Stats.Online,
+		Name:      maybePlayer.Name,
+		Class:     maybePlayer.Class,
+		Xp:        maybePlayer.Stats.Xp,
+		Level:     maybePlayer.Stats.Level(),
+		ItemLevel: maybePlayer.ItemLevel(),
+		X:         maybePlayer.Location.X,
+		Y:         maybePlayer.Location.Y,
+		Created:   maybePlayer.Stats.Created,
+		Online:    maybePlayer.Stats.Online,
 	}
 	json.NewEncoder(w).Encode(encodedPlayer)
 }
