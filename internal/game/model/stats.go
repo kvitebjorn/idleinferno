@@ -10,6 +10,16 @@ type Stats struct {
 	Online  bool
 }
 
+func (s *Stats) IncrementXp() {
+	s.Xp += 1
+}
+
+func (s *Stats) DecrementXp() {
+	if s.Xp > 0 {
+		s.Xp -= 1
+	}
+}
+
 const (
 	// With these factors, it takes 2.5 years to reach level 100
 	// if the player remains logged in 24/7...

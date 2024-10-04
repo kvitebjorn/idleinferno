@@ -76,7 +76,7 @@ func (w *World) Wander() {
 	defer w.mut.Unlock()
 
 	for _, player := range w.Players {
-		player.Stats.Xp += 1
+		player.Stats.IncrementXp()
 		emptyNeighborCoords := w.getEmptyNeighborCoords(player.Location)
 		emptyNeighborCoordsLen := len(emptyNeighborCoords)
 		if emptyNeighborCoordsLen == 0 {
@@ -128,6 +128,11 @@ func (w *World) Arena() {
 		result := "won"
 		if opponentRoll >= playerRoll {
 			result = "lost"
+			opponent.Stats.IncrementXp()
+			player.Stats.DecrementXp()
+		} else {
+			opponent.Stats.DecrementXp()
+			player.Stats.IncrementXp()
 		}
 		combatMsg := fmt.Sprintf("%s (%d) challenged %s (%d) to a fight and %s!",
 			player.Name,
@@ -137,7 +142,6 @@ func (w *World) Arena() {
 			result)
 		log.Println(combatMsg)
 
-		// TODO: add/subtract xp from each player
 		// TODO: save a record of this fight for each player, and its result
 
 		alreadyFought[player.Name] = true
