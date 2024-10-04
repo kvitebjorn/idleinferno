@@ -168,7 +168,8 @@ func (w *World) ToString() string {
 	sb.WriteString("\n")
 	sb.WriteString("Players:\n")
 	for _, p := range w.Players {
-		sb.WriteString(p.Name + "\n")
+		playerDescription := fmt.Sprintf("%s (%d)\n", p.Name, p.ItemLevel())
+		sb.WriteString(playerDescription)
 	}
 
 	sb.WriteString("\n")
