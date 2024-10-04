@@ -171,14 +171,12 @@ func (c *Client) handleLogin() {
 	}
 
 	// Listen for our online message just to make sure...
-	playerMsg, err := c.receiveMessage()
+	_, err = c.receiveMessage()
 	if err != nil {
 		fmt.Println("Failed to log in.")
 		c.menu()
 	}
 	log.Println("idleinferno server handshake successful!")
-	prettyMsg := fmt.Sprintf("%s: %s", playerMsg.Player.Name, playerMsg.Message)
-	log.Println(prettyMsg)
 }
 
 func (c *Client) handleSignUp() {
@@ -476,8 +474,7 @@ func (c *Client) listen() {
 		}
 		switch msg.Code {
 		case requests.Chatter:
-			prettyMsg := fmt.Sprintf("%s: %s", msg.Player.Name, msg.Message)
-			log.Println(prettyMsg)
+			fmt.Println(msg.Message)
 		default:
 		}
 	}

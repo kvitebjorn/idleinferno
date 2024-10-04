@@ -2,6 +2,7 @@ package sqlite
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 	"os"
 
@@ -22,32 +23,32 @@ func (s *Sqlite) Init() {
 	createTables := false
 	_, err := os.Stat(DatabaseName)
 	if err != nil {
-		log.Println("Creating database...")
+		fmt.Println("Creating database...")
 		createTables = true
 		_, err = os.Create(DatabaseName)
 		if err != nil {
-			log.Fatalln("Failed to create database:", err.Error())
+			fmt.Println("Failed to create database:", err.Error())
 		}
-		log.Println("Database created successfully!")
+		fmt.Println("Database created successfully!")
 	}
 
-	log.Println("Connecting to database...")
+	fmt.Println("Connecting to database...")
 	db, err := sql.Open("sqlite3", DatabaseName)
 	if err != nil {
 		log.Fatalln("Error connecting to db:", err)
 	}
-	log.Println("Database connection successful!")
+	fmt.Println("Database connection successful!")
 
 	s.db = db
 
 	if createTables {
-		log.Println("Creating database tables...")
+		fmt.Println("Creating database tables...")
 		_, err = db.Exec(queries.CreatePlayersTableSql)
 		_, err = db.Exec(queries.CreateItemsTableSql)
 		if err != nil {
 			log.Fatalln("Failed to initialize database tables:", err.Error())
 		}
-		log.Println("Database tables created successfully!")
+		fmt.Println("Database tables created successfully!")
 	}
 
 	return
@@ -169,7 +170,7 @@ func (s *Sqlite) ReadUserByEmail(email string) *model.User {
 	user := &model.User{}
 	err := row.Scan(&user.Name, &user.Password, &user.Online)
 	if err != nil {
-		log.Println("Error querying for user:", err.Error())
+		fmt.Println("Error querying for user:", err.Error())
 		return nil
 	}
 
@@ -240,19 +241,19 @@ func (s *Sqlite) updateUserStatus(name string, online int) error {
 	defer stmt.Close()
 
 	if err != nil {
-		log.Println(err.Error())
+		fmt.Println(err.Error())
 		return err
 	}
 
 	res, err := stmt.Exec(online, name)
 	if err != nil {
-		log.Println(err.Error())
+		fmt.Println(err.Error())
 		return err
 	}
 
 	_, err = res.RowsAffected()
 	if err != nil {
-		log.Println(err.Error())
+		fmt.Println(err.Error())
 		return err
 	}
 
@@ -355,6 +356,6 @@ func (s *Sqlite) DeleteItem(guid string) {
 
 func checkErr(err error) {
 	if err != nil {
-		log.Println(err.Error())
+		fmt.Println(err.Error())
 	}
 }

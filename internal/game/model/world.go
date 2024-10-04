@@ -142,8 +142,6 @@ func (w *World) Arena() {
 			result)
 		log.Println(combatMsg)
 
-		// TODO: save a record of this fight for each player, and its result
-
 		alreadyFought[player.Name] = true
 		alreadyFought[opponent.Name] = true
 	}

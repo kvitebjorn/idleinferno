@@ -1,15 +1,19 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"math"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
@@ -22,8 +26,9 @@ import (
 )
 
 type Server struct {
-	db   db.Database
-	game *game.Game
+	db              db.Database
+	game            *game.Game
+	broadcastBuffer *bytes.Buffer
 }
 
 type Client struct {
@@ -47,9 +52,10 @@ func (s *Server) Start() {
 	myRouter.HandleFunc("/ws", s.handleConnection)
 
 	go handleMessages()
+	go s.sendLogsToWebSocket()
 
-	fmt.Println("idleinferno server started on :12315")
-	err := http.ListenAndServe(":12315", myRouter)
+	fmt.Println("idleinferno server started on :33379")
+	err := http.ListenAndServe(":33379", myRouter)
 	if err != nil {
 		panic("Error starting idleinferno server: " + err.Error())
 	}
@@ -136,10 +142,10 @@ func (s *Server) createUser(w http.ResponseWriter, r *http.Request) {
 	}
 	dbUser := s.db.CreatePlayer(&modelUser)
 	if dbUser == nil {
-		log.Println("Failed to create user", modelUser.Name)
+		fmt.Println("Failed to create user", modelUser.Name)
 		return
 	}
-	log.Println("Created user", modelUser.Name)
+	fmt.Println("Created user", modelUser.Name)
 	json.NewEncoder(w).Encode(&user)
 }
 
@@ -155,33 +161,33 @@ func (s *Server) handleConnection(w http.ResponseWriter, r *http.Request) {
 	var msg requests.UserMessage
 	err = conn.ReadJSON(&msg)
 	if err != nil {
-		log.Printf("%v %s\n", msg.Code, err.Error())
+		fmt.Println("%v %s", msg.Code, err.Error())
 		return
 	}
 
 	user := msg.User
 	maybeUser := s.db.ReadUser(user.Name)
 	if maybeUser == nil {
-		log.Println("User doesn't exist:", user.Name)
+		fmt.Println("User doesn't exist:", user.Name)
 		return
 	}
 	if !auth.CheckHash(user.Password, maybeUser.Password) {
-		log.Println("Invalid user credentials for", user.Name)
+		fmt.Println("Invalid user credentials for", user.Name)
 		return
 	}
 	if maybeUser.Online {
-		log.Println(user.Name, "is already online.")
+		fmt.Println(user.Name, "is already online.")
 		return
 	}
 	err = s.db.UpdateUserOnline(user.Name)
 	if err != nil {
-		log.Println(user.Name, "failed to come online")
+		fmt.Println(user.Name, "failed to come online")
 		return
 	}
 
 	userId := USER_COUNTER.Add(1)
 	if userId == math.MaxUint64-1 {
-		fmt.Println("Server full")
+		log.Println("Server full")
 		return
 	}
 
@@ -194,16 +200,18 @@ func (s *Server) handleConnection(w http.ResponseWriter, r *http.Request) {
 	gamePlayer := s.db.ReadPlayer(player.Name)
 	updatedGamePlayer, err := s.game.World.Login(gamePlayer)
 	if err != nil {
-		log.Println(err.Error())
+		fmt.Println(err.Error())
 		return
 	}
 	_ = s.db.UpdatePlayer(updatedGamePlayer)
 
 	connMsg := fmt.Sprintf("%s connected!", client.Player.Name)
 	log.Println(connMsg)
-	BROADCAST <- requests.PlayerMessage{Player: SERVER_PLAYER, Message: connMsg, Code: requests.Chatter}
 
-	// Listen for messages, and add them to the broadcast channel to be fanned out
+	// We send this because they will miss their own login broadcast message
+	conn.WriteJSON(&requests.PlayerMessage{Player: SERVER_PLAYER, Message: connMsg, Code: requests.Chatter})
+
+	// Listen for messages, and add them to the broadcast channel to potentially be fanned out
 	for {
 		var msg requests.PlayerMessage
 		err := conn.ReadJSON(&msg)
@@ -215,16 +223,6 @@ func (s *Server) handleConnection(w http.ResponseWriter, r *http.Request) {
 			s.game.World.Logout(gamePlayer)
 			_ = s.db.UpdateUserOffline(user.Name)
 			log.Println(user.Name, "went offline.")
-
-			disconnectMsg := fmt.Sprintf("%s disconnected!", client.Player.Name)
-			BROADCAST <- requests.PlayerMessage{
-				Player:  *client.Player,
-				Message: "bye",
-				Code:    requests.Valediction}
-			BROADCAST <- requests.PlayerMessage{
-				Player:  SERVER_PLAYER,
-				Message: disconnectMsg,
-				Code:    requests.Chatter}
 			return
 		}
 
@@ -248,15 +246,21 @@ func handleMessages() {
 }
 
 func (s *Server) Run() {
-	log.Println("Initializing database...")
+	// Create a buffer to store logs
+	s.broadcastBuffer = new(bytes.Buffer)
+
+	// Tee the log output to both the console and the buffer
+	log.SetOutput(io.MultiWriter(os.Stdout, s.broadcastBuffer))
+
+	fmt.Println("Initializing database...")
 	s.db = &sqlite.Sqlite{}
 	s.db.Init()
-	log.Println("Database initialized successfully!")
+	fmt.Println("Database initialized successfully!")
 
-	log.Println("Starting idleinferno...")
-	log.Println("Initializing world...")
+	fmt.Println("Starting idleinferno...")
+	fmt.Println("Initializing world...")
 	s.game = &game.Game{World: s.initWorld()}
-	log.Println("World initialized successfully!")
+	fmt.Println("World initialized successfully!")
 
 	// Start the request listener
 	go s.Start()
@@ -286,19 +290,19 @@ func (s *Server) Run() {
 	}()
 
 	// Start the game
-	log.Println("Running main game loop...")
+	fmt.Println("Running main game loop...")
 	s.game.Run(s.saveWorld)
-	log.Println("Main game loop exited.")
+	fmt.Println("Main game loop exited.")
 
-	log.Println("Saving the world...")
+	fmt.Println("Saving the world...")
 	s.saveWorld(s.game.World)
-	log.Println("World saved!")
+	fmt.Println("World saved!")
 
 	err := s.db.Close()
 	if err != nil {
 		log.Fatalln("Error closing database:", err.Error())
 	}
-	log.Println("Exiting idleinferno.")
+	fmt.Println("Exiting idleinferno.")
 }
 
 func (s *Server) initWorld() *model.World {
@@ -314,4 +318,22 @@ func (s *Server) saveWorld(world *model.World) {
 	}
 
 	return
+}
+
+func (s *Server) sendLogsToWebSocket() {
+	for {
+		// Periodically send logs from the buffer
+		logData := strings.TrimSpace(s.broadcastBuffer.String())
+		if logData != "" {
+			msg := requests.PlayerMessage{
+				Player:  SERVER_PLAYER,
+				Message: logData,
+				Code:    requests.Chatter,
+			}
+			BROADCAST <- msg
+			s.broadcastBuffer.Reset()
+		}
+
+		time.Sleep(2 * time.Second)
+	}
 }
