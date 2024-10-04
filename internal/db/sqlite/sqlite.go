@@ -106,6 +106,11 @@ func (s *Sqlite) ReadPlayer(name string) *model.Player {
 		return nil
 	}
 
+	items := s.ReadItems(player.Name)
+	for _, i := range items {
+		player.Inventory[i.Class] = i
+	}
+
 	return player
 }
 
@@ -135,6 +140,11 @@ func (s *Sqlite) ReadPlayers() []*model.Player {
 			&player.Stats.Online,
 		)
 		checkErr(err)
+
+		items := s.ReadItems(player.Name)
+		for _, i := range items {
+			player.Inventory[i.Class] = i
+		}
 
 		players = append(players, player)
 	}
@@ -171,16 +181,57 @@ func (s *Sqlite) ReadUserByEmail(email string) *model.User {
 }
 
 func (s *Sqlite) UpdatePlayer(player *model.Player) int64 {
-	// TODO: rest of the fields, right now we only update location
+	// TODO: stats fields
 	stmt, err := s.db.Prepare(queries.UpdatePlayerSql)
 	checkErr(err)
 	defer stmt.Close()
 
+	// TODO: add xp, level, itemlevel, etc
 	res, err := stmt.Exec(player.Location.X, player.Location.Y, player.Name)
 	checkErr(err)
 
 	affected, err := res.RowsAffected()
 	checkErr(err)
+
+	// TODO: improve this lol
+	// First delete all the items we don't have anymore
+	knownItems := s.ReadItems(player.Name)
+	for _, i := range knownItems {
+		found := false
+		for _, j := range player.Inventory {
+			if j == nil {
+				continue
+			}
+
+			if j.Id == i.Id {
+				found = true
+				break
+			}
+		}
+		if found {
+			continue
+		}
+		s.DeleteItem(i.Id)
+	}
+
+	// Then add the new items that aren't in the db
+	for _, i := range player.Inventory {
+		if i == nil {
+			continue
+		}
+
+		found := false
+		for _, j := range knownItems {
+			if j.Id == i.Id {
+				found = true
+				break
+			}
+		}
+		if found {
+			continue
+		}
+		s.CreateItem(i)
+	}
 
 	return affected
 }
@@ -220,19 +271,64 @@ func (s *Sqlite) DeletePlayer(guid string) {
 	return
 }
 
-func (s *Sqlite) CreateItem(*model.Item) *model.Item {
-	// TODO
-	return nil
+func (s *Sqlite) CreateItem(item *model.Item) *model.Item {
+	stmt, err := s.db.Prepare(queries.CreateItemSql)
+	checkErr(err)
+	defer stmt.Close()
+
+	item.Id = uuid.New().String()
+
+	res, err := stmt.Exec(
+		item.Id,
+		item.Name,
+		item.Class,
+		item.ItemLevel,
+		item.Player)
+	checkErr(err)
+
+	_, err = res.RowsAffected()
+	checkErr(err)
+
+	return item
 }
 
 func (s *Sqlite) ReadItem(guid string) *model.Item {
-	// TODO
-	return nil
+	row := s.db.QueryRow(queries.ReadItemSql, guid)
+
+	item := &model.Item{}
+	err := row.Scan(&item.Id, &item.Name, &item.Class, &item.ItemLevel, &item.Player)
+	if err != nil {
+		return nil
+	}
+
+	return item
 }
 
-func (s *Sqlite) ReadItems() []*model.Item {
-	// TODO
-	return nil
+func (s *Sqlite) ReadItems(playerName string) []*model.Item {
+	rows, err := s.db.Query(queries.ReadItemsByPlayerSql, playerName)
+	defer rows.Close()
+
+	checkErr(err)
+
+	items := make([]*model.Item, 0)
+	for rows.Next() {
+		item := &model.Item{}
+
+		err = rows.Scan(
+			&item.Id,
+			&item.Name,
+			&item.Class,
+			&item.ItemLevel,
+			&item.Player)
+		checkErr(err)
+
+		items = append(items, item)
+	}
+
+	err = rows.Err()
+	checkErr(err)
+
+	return items
 }
 
 func (s *Sqlite) UpdateItem(*model.Item) int64 {
@@ -241,12 +337,22 @@ func (s *Sqlite) UpdateItem(*model.Item) int64 {
 }
 
 func (s *Sqlite) DeleteItem(guid string) {
-	// TODO
+	stmt, err := s.db.Prepare(queries.DeleteItemSql)
+	defer stmt.Close()
+
+	checkErr(err)
+
+	res, err := stmt.Exec(guid)
+	checkErr(err)
+
+	_, err = res.RowsAffected()
+	checkErr(err)
+
 	return
 }
 
 func checkErr(err error) {
 	if err != nil {
-		log.Fatalln(err.Error())
+		log.Println(err.Error())
 	}
 }

@@ -57,8 +57,6 @@ func (c *Client) Run() {
 	log.Println("Connected to idleinferno server!")
 
 	c.menu()
-
-	log.Println("Listening for messages...")
 	c.listen()
 }
 
@@ -178,8 +176,9 @@ func (c *Client) handleLogin() {
 		fmt.Println("Failed to log in.")
 		c.menu()
 	}
-	log.Println(playerMsg)
 	log.Println("idleinferno server handshake successful!")
+	prettyMsg := fmt.Sprintf("%s: %s", playerMsg.Player.Name, playerMsg.Message)
+	log.Println(prettyMsg)
 }
 
 func (c *Client) handleSignUp() {
@@ -477,7 +476,8 @@ func (c *Client) listen() {
 		}
 		switch msg.Code {
 		case requests.Chatter:
-			log.Println(msg.Message)
+			prettyMsg := fmt.Sprintf("%s: %s", msg.Player.Name, msg.Message)
+			log.Println(prettyMsg)
 		default:
 		}
 	}

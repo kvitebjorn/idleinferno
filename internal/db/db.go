@@ -12,9 +12,9 @@ type Database interface {
 	UpdatePlayer(*model.Player) int64
 	DeletePlayer(guid string)
 
-	CreateItem(*model.Item) *model.Item
+	CreateItem(item *model.Item) *model.Item
 	ReadItem(guid string) *model.Item
-	ReadItems() []*model.Item
+	ReadItems(playerName string) []*model.Item
 	UpdateItem(*model.Item) int64
 	DeleteItem(guid string)
 

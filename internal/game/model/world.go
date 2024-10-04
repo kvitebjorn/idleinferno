@@ -3,6 +3,7 @@ package model
 import (
 	"errors"
 	"fmt"
+	"log"
 	"math/rand/v2"
 	"strings"
 	"sync"
@@ -89,12 +90,16 @@ func (w *World) Walk() {
 }
 
 func (w *World) SearchForItem() {
-	// TODO: each player searches for an item to equip
-	// random chance of getting a random item type in a certain level range
-	// based on the player's current level
-	// if it's a higher item level than that current slot, it gets replaced and saved,
-	// and the old item will get deleted...
-	// MAKE SURE TO IMPLEMENT ITEM STATE SAVING + DELETING AFTER THIS - especially on SaveWorld
+	w.mut.Lock()
+	defer w.mut.Unlock()
+
+	for _, player := range w.Players {
+		chance := rand.IntN(int(player.Stats.Level))
+		log.Println(player.Name, "rolled a", chance)
+		if chance > int(player.Stats.Level/2) {
+			player.AcquireItem()
+		}
+	}
 }
 
 func (w *World) ToString() string {

@@ -1,9 +1,9 @@
 package model
 
 type Stats struct {
-	Level     uint
-	Xp        uint64
-	ItemLevel uint
+	Level     int
+	Xp        int
+	ItemLevel int
 	Created   string
 	Online    bool
 }
