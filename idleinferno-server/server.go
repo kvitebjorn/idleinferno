@@ -83,15 +83,14 @@ func (s *Server) getPlayer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	encodedPlayer := requests.Player{
-		Name:      maybePlayer.Name,
-		Class:     maybePlayer.Class,
-		Xp:        maybePlayer.Stats.Xp,
-		Level:     maybePlayer.Stats.Level,
-		ItemLevel: maybePlayer.Stats.ItemLevel,
-		X:         maybePlayer.Location.X,
-		Y:         maybePlayer.Location.Y,
-		Created:   maybePlayer.Stats.Created,
-		Online:    maybePlayer.Stats.Online,
+		Name:    maybePlayer.Name,
+		Class:   maybePlayer.Class,
+		Xp:      maybePlayer.Stats.Xp,
+		Level:   maybePlayer.Stats.Level,
+		X:       maybePlayer.Location.X,
+		Y:       maybePlayer.Location.Y,
+		Created: maybePlayer.Stats.Created,
+		Online:  maybePlayer.Stats.Online,
 	}
 	json.NewEncoder(w).Encode(encodedPlayer)
 }
@@ -175,7 +174,7 @@ func (s *Server) handleConnection(w http.ResponseWriter, r *http.Request) {
 	}
 	err = s.db.UpdateUserOnline(user.Name)
 	if err != nil {
-		log.Println("Failed to come online for user", user.Name)
+		log.Println(user.Name, "failed to come online")
 		return
 	}
 
@@ -274,6 +273,16 @@ func (s *Server) Run() {
 			log.Fatalln("Server interrupted.")
 			os.Exit(1)
 		}
+	}()
+
+	// Safety net log out all users on crash
+	defer func() {
+		s.saveWorld(s.game.World)
+		for _, p := range s.game.World.Players {
+			s.db.UpdateUserOffline(p.Name)
+		}
+		log.Println("Server crashed.")
+		os.Exit(1)
 	}()
 
 	// Start the game

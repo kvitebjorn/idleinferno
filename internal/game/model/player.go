@@ -22,6 +22,17 @@ type User struct {
 	Online   bool
 }
 
+func (p Player) ItemLevel() int {
+	sum := 0
+	for _, i := range p.Inventory {
+		if i == nil {
+			continue
+		}
+		sum += i.ItemLevel
+	}
+	return sum
+}
+
 func (p *Player) AcquireItem() {
 	itemClass := rand.IntN(9)
 	itemLevel := rand.IntN(p.Stats.Level + 2)

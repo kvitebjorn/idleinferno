@@ -71,7 +71,7 @@ func (w *World) Logout(player *Player) {
 	w.Grid[player.Location.Y][player.Location.X] = nil
 }
 
-func (w *World) Walk() {
+func (w *World) Wander() {
 	w.mut.Lock()
 	defer w.mut.Unlock()
 
@@ -89,7 +89,7 @@ func (w *World) Walk() {
 	}
 }
 
-func (w *World) SearchForItem() {
+func (w *World) Scavenge() {
 	w.mut.Lock()
 	defer w.mut.Unlock()
 
@@ -99,6 +99,48 @@ func (w *World) SearchForItem() {
 		if chance > int(player.Stats.Level/2) {
 			player.AcquireItem()
 		}
+	}
+}
+
+func (w *World) Arena() {
+	w.mut.Lock()
+	defer w.mut.Unlock()
+
+	// TODO: can i cache this somehow? kind of want the anti-walk data
+	//       but we'd have to fight before we walk...
+	//       meh
+	alreadyFought := make(map[string]bool)
+	for _, player := range w.Players {
+		if ok := alreadyFought[player.Name]; ok {
+			continue
+		}
+		neighborCoords := w.getOccupiedNeighborCoords(player.Location)
+		neighborCoordsLen := len(neighborCoords)
+		if neighborCoordsLen == 0 {
+			continue
+		}
+		opponentCoords := neighborCoords[rand.IntN(neighborCoordsLen)]
+		opponent := w.Grid[opponentCoords.Y][opponentCoords.X]
+
+		playerRoll := rand.IntN(player.ItemLevel())
+		opponentRoll := rand.IntN(opponent.ItemLevel())
+		result := "won"
+		if opponentRoll >= playerRoll {
+			result = "lost"
+		}
+		combatMsg := fmt.Sprintf("%s (%d) challenged %s (%d) to a fight and %s!",
+			player.Name,
+			playerRoll,
+			opponent.Name,
+			opponentRoll,
+			result)
+		log.Println(combatMsg)
+
+		// TODO: add/subtract xp from each player
+		// TODO: save a record of this fight for each player, and its result
+
+		alreadyFought[player.Name] = true
+		alreadyFought[opponent.Name] = true
 	}
 }
 
@@ -135,7 +177,15 @@ func (w *World) ToString() string {
 }
 
 func (w *World) getEmptyNeighborCoords(c *Coordinates) []Coordinates {
-	empty := make([]Coordinates, 0)
+	return w.getNeighborCoords(c, false)
+}
+
+func (w *World) getOccupiedNeighborCoords(c *Coordinates) []Coordinates {
+	return w.getNeighborCoords(c, true)
+}
+
+func (w *World) getNeighborCoords(c *Coordinates, lookingForPlayers bool) []Coordinates {
+	coords := make([]Coordinates, 0)
 	dirs := [...]Coordinates{Up, Down, Left, Right}
 	for _, dir := range dirs {
 		thisY := c.Y + dir.Y
@@ -144,9 +194,10 @@ func (w *World) getEmptyNeighborCoords(c *Coordinates) []Coordinates {
 			thisY >= 0 &&
 			thisX < WorldSize &&
 			thisX >= 0 &&
-			w.Grid[thisY][thisX] == nil {
-			empty = append(empty, Coordinates{X: thisX, Y: thisY})
+			((lookingForPlayers && w.Grid[thisY][thisX] != nil) ||
+				(!lookingForPlayers && w.Grid[thisY][thisX] == nil)) {
+			coords = append(coords, Coordinates{X: thisX, Y: thisY})
 		}
 	}
-	return empty
+	return coords
 }

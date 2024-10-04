@@ -97,7 +97,6 @@ func (s *Sqlite) ReadPlayer(name string) *model.Player {
 		&player.Location.Y,
 		&player.Stats.Xp,
 		&player.Stats.Level,
-		&player.Stats.ItemLevel,
 		&player.Stats.Created,
 		&player.Stats.Online,
 	)
@@ -135,7 +134,6 @@ func (s *Sqlite) ReadPlayers() []*model.Player {
 			&player.Location.Y,
 			&player.Stats.Xp,
 			&player.Stats.Level,
-			&player.Stats.ItemLevel,
 			&player.Stats.Created,
 			&player.Stats.Online,
 		)
@@ -186,8 +184,11 @@ func (s *Sqlite) UpdatePlayer(player *model.Player) int64 {
 	checkErr(err)
 	defer stmt.Close()
 
-	// TODO: add xp, level, itemlevel, etc
-	res, err := stmt.Exec(player.Location.X, player.Location.Y, player.Name)
+	// TODO: add xp, level, etc
+	res, err := stmt.Exec(
+		player.Location.X,
+		player.Location.Y,
+		player.Name)
 	checkErr(err)
 
 	affected, err := res.RowsAffected()
@@ -241,16 +242,19 @@ func (s *Sqlite) updateUserStatus(name string, online int) error {
 	defer stmt.Close()
 
 	if err != nil {
+		log.Println(err.Error())
 		return err
 	}
 
 	res, err := stmt.Exec(online, name)
 	if err != nil {
+		log.Println(err.Error())
 		return err
 	}
 
 	_, err = res.RowsAffected()
 	if err != nil {
+		log.Println(err.Error())
 		return err
 	}
 
