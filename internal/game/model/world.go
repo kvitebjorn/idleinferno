@@ -123,6 +123,10 @@ func (w *World) Arena() {
 		opponentCoords := neighborCoords[rand.IntN(neighborCoordsLen)]
 		opponent := w.Grid[opponentCoords.Y][opponentCoords.X]
 
+		if player.ItemLevel() == 0 || opponent.ItemLevel() == 0 {
+			continue
+		}
+
 		playerRoll := rand.IntN(player.ItemLevel())
 		opponentRoll := rand.IntN(opponent.ItemLevel())
 		result := "won"

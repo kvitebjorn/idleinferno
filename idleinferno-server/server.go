@@ -283,7 +283,6 @@ func (s *Server) Run() {
 			s.db.UpdateUserOffline(p.Name)
 		}
 		log.Println("Server crashed.")
-		os.Exit(1)
 	}()
 
 	// Start the game
