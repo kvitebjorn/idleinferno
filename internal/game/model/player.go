@@ -136,7 +136,7 @@ func (p *Player) ToString() string {
 		if i == nil {
 			continue
 		}
-		fmt.Fprintf(tw, "%s (%d)", i.Name, i.ItemLevel)
+		fmt.Fprintf(tw, "%s (%d)\n", i.Name, i.ItemLevel)
 	}
 	tw.Flush()
 	return sb.String()

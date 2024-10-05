@@ -260,7 +260,7 @@ func (w *World) ToString() string {
 	var playerList []string
 	for _, player := range w.Players {
 		playerList = append(playerList,
-			fmt.Sprintf("%s the level %d %s (%d)\n",
+			fmt.Sprintf("%s the level %d %s (%d)",
 				player.Name,
 				player.Stats.Level(),
 				player.Class,
