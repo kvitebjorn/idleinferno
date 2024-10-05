@@ -241,6 +241,12 @@ func (w *World) ToString() string {
 		layer := player.Location.Y
 		x := rand.IntN(xMax-xMin+1) + xMin
 		y := rand.IntN(yMax-yMin+1) + (layer * 8) + yMin
+		if y > len(infernoArt)-1 {
+			y -= 5
+		}
+		if x > len(infernoArt[y])-1 {
+			x -= 5
+		}
 		playerCoords[player.Name] = Coordinates{X: x, Y: y}
 	}
 
@@ -254,7 +260,7 @@ func (w *World) ToString() string {
 	var playerList []string
 	for _, player := range w.Players {
 		playerList = append(playerList,
-			fmt.Sprintf("%s the level %d %s (%d)",
+			fmt.Sprintf("%s the level %d %s (%d)\n",
 				player.Name,
 				player.Stats.Level(),
 				player.Class,

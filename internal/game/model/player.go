@@ -81,7 +81,7 @@ func (p *Player) FindItem() {
 
 	// Check if the found item is worse than existing one
 	if p.Inventory[itemClass] != nil && p.Inventory[itemClass].ItemLevel > itemLevel {
-		log.Println(p.Name,
+		fmt.Println(p.Name,
 			"found a new item, but it's worse than their",
 			p.Inventory[itemClass].ToString())
 		return
