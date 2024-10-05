@@ -5,6 +5,13 @@ An IdleRPG inspired by Dante's Inferno.
 Runs on port 33379 by default.
 
 **Build commands**
+- **_GO install_**
+```
+go install github.com/kvitebjorn/idleinferno/idleinferno-client@latest
+```
+```
+go install github.com/kvitebjorn/idleinferno/idleinferno-server@latest
+```
 
 - **_Native Linux_**
 
