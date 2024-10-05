@@ -90,7 +90,7 @@ func (p *Player) FindItem() {
 	newItem := createItem(ItemClass(itemClass), itemLevel)
 	newItem.Player = p.Name
 	p.Inventory[itemClass] = newItem
-	log.Println(p.Name, "acquired", newItem.ToString())
+	log.Println(p.Name, "acquired a", newItem.ToString())
 }
 
 // weightedRandomItemLevel generates a random item level with bias towards lower levels

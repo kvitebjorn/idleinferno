@@ -1,20 +1,10 @@
 package model
 
-import "fmt"
+import (
+	"fmt"
+)
 
 type ItemClass int
-
-var classToString = []string{
-	"helmet",
-	"chest plate",
-	"grieves",
-	"vambraces",
-	"gloves",
-	"boots",
-	"necklace",
-	"ring",
-	"weapon", // TODO: make this variable: swords, axes, etc.
-}
 
 const (
 	Head ItemClass = iota
@@ -37,12 +27,11 @@ type Item struct {
 }
 
 func (i Item) ToString() string {
-	class := classToString[i.Class]
-	return fmt.Sprintf("%s, the level %d %s", i.Name, i.ItemLevel, class)
+	return fmt.Sprintf("level %d %s", i.ItemLevel, i.Name)
 }
 
 func createItem(itemClass ItemClass, itemLevel int) *Item {
-	name := "TODO"
+	name := GetItemName(itemClass)
 	return &Item{
 		Name:      name,
 		Class:     ItemClass(itemClass),
