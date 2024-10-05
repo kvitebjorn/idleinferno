@@ -16,7 +16,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"time"
 	"unicode"
 
 	"github.com/gorilla/websocket"
@@ -28,6 +27,7 @@ type Client struct {
 	ws            *websocket.Conn
 	serverAddress string
 	name          string
+	userInput     string
 }
 
 func (c *Client) Run() {
@@ -57,6 +57,10 @@ func (c *Client) Run() {
 	log.Println("Connected to idleinferno server!")
 
 	c.menu()
+
+	// Listen for input in a separate goroutine
+	go c.handleInput()
+
 	c.listen()
 }
 
@@ -296,6 +300,7 @@ func (c *Client) handleQuit() {
 
 func (c *Client) sendMessage(code requests.StatusCode, content string) error {
 	var msg requests.PlayerMessage
+	msg.Player = requests.Player{Name: c.name}
 	msg.Code = code
 	msg.Message = content
 	err := c.ws.WriteJSON(&msg)
@@ -454,16 +459,37 @@ func (c *Client) createUser(user *requests.User) error {
 	return nil
 }
 
-func (c *Client) listen() {
+func (c *Client) disconnect() {
+	if c.ws != nil {
+		c.ws.Close()
+	}
+	log.Println("Disconnected!")
+	os.Exit(1)
+}
+
+func (c *Client) handleInput() {
+	reader := bufio.NewReader(os.Stdin)
+
 	for {
-		if c.ws == nil {
-			time.Sleep(1 * time.Second)
-			continue
+		// Print the input prompt
+		fmt.Print("→ ")
+		input, _ := reader.ReadString('\n')
+		c.userInput = strings.TrimSpace(input) // Store input in the struct field
+
+		if c.userInput == "" {
+			continue // Skip empty input
 		}
 
-		break
+		// Send the input as a message to the server
+		err := c.sendMessage(requests.Chatter, c.userInput)
+		if err != nil {
+			log.Println("Error sending message:", err)
+		}
+		c.userInput = "" // Clear input after sending
 	}
+}
 
+func (c *Client) listen() {
 	for {
 		var msg requests.PlayerMessage
 		err := c.ws.ReadJSON(&msg)
@@ -472,18 +498,20 @@ func (c *Client) listen() {
 			c.disconnect()
 			return
 		}
+
 		switch msg.Code {
 		case requests.Chatter:
-			fmt.Println(msg.Message)
+			// Clear the current line before printing the server message
+			fmt.Print("\033[K")      // ANSI escape code to clear the line
+			fmt.Println(msg.Message) // Print the received message
+
+			// Move the cursor back to the input line
+			fmt.Print("\033[F") // Move cursor up one line
+			// Reprint the prompt
+			fmt.Print("→ ")
+			// Reprint the last user input if necessary
+			fmt.Print(c.userInput) // Reprint the user input from the struct field
 		default:
 		}
 	}
-}
-
-func (c *Client) disconnect() {
-	if c.ws != nil {
-		c.ws.Close()
-	}
-	log.Println("Disconnected!")
-	os.Exit(1)
 }

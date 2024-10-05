@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log"
 	"math/rand/v2"
+	"strings"
+	"text/tabwriter"
 )
 
 type Player struct {
@@ -116,4 +118,19 @@ func weightedRandomItemLevel(maxLevel int) int {
 
 	// Fallback (should not be reached)
 	return maxLevel
+}
+
+func (p *Player) ToString() string {
+	var sb strings.Builder
+	tw := tabwriter.NewWriter(&sb, 4, 1, 1, ' ', 0)
+	fmt.Fprintf(tw, "Name: %s", p.Name)
+	fmt.Fprintf(tw, "Class: %s", p.Class)
+	fmt.Fprintf(tw, "Item level: %d", p.ItemLevel())
+	fmt.Fprintf(tw, "Experience: %d", p.Stats.Xp)
+	fmt.Fprintf(tw, "Level: %d", p.Stats.Level())
+	fmt.Fprintf(tw, "Next level: %d", p.Stats.UntilNextLevel())
+	fmt.Fprintf(tw, "Location: (%d,%d)", p.Location.X, p.Location.Y)
+	fmt.Fprintf(tw, "Id: %s", p.Id)
+	fmt.Fprintf(tw, "Created: %s", p.Stats.Created)
+	return sb.String()
 }

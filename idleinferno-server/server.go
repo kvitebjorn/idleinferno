@@ -211,7 +211,7 @@ func (s *Server) handleConnection(w http.ResponseWriter, r *http.Request) {
 	// We send this because they will miss their own login broadcast message
 	conn.WriteJSON(&requests.PlayerMessage{Player: SERVER_PLAYER, Message: connMsg, Code: requests.Chatter})
 
-	// Listen for messages, and add them to the broadcast channel to potentially be fanned out
+	// Listen for messages, respond if they are valid
 	for {
 		var msg requests.PlayerMessage
 		err := conn.ReadJSON(&msg)
@@ -226,8 +226,25 @@ func (s *Server) handleConnection(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		BROADCAST <- msg
+		switch msg.Code {
+		case requests.Chatter:
+			reqMsg := strings.ToLower(strings.TrimSpace(msg.Message))
+			switch reqMsg {
+			case "map":
+				s.writeToConn(conn, s.game.World.ToString())
+			case "info":
+				p := s.db.ReadPlayer(msg.Player.Name)
+				s.writeToConn(conn, p.ToString())
+			default:
+				s.writeToConn(conn, "Invalid request, sinner.")
+			}
+		default:
+		}
 	}
+}
+
+func (s *Server) writeToConn(c *websocket.Conn, msg string) {
+	c.WriteJSON(&requests.PlayerMessage{Player: SERVER_PLAYER, Message: msg, Code: requests.Chatter})
 }
 
 func handleMessages() {
@@ -308,7 +325,7 @@ func (s *Server) Run() {
 func (s *Server) initWorld() *model.World {
 	world := &model.World{}
 
-	log.Println(world.ToString())
+	fmt.Println(world.ToString())
 	return world
 }
 

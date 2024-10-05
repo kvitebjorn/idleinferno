@@ -1,7 +1,7 @@
 package game
 
 import (
-	"log"
+	"fmt"
 	"time"
 
 	"github.com/kvitebjorn/idleinferno/internal/game/model"
@@ -20,7 +20,7 @@ func (g *Game) Run(saveFn func(world *model.World)) {
 		case <-ticker.C:
 			g.tick()
 			saveFn(g.World)
-			log.Println(g.World.ToString())
+			fmt.Println(g.World.ToString())
 
 		case <-quit:
 			ticker.Stop()
