@@ -324,8 +324,6 @@ func (s *Server) Run() {
 
 func (s *Server) initWorld() *model.World {
 	world := &model.World{}
-
-	fmt.Println(world.ToString())
 	return world
 }
 
