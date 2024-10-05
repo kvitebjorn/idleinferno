@@ -7,7 +7,6 @@ import (
 	"math/rand/v2"
 	"strings"
 	"sync"
-	"text/tabwriter"
 )
 
 // Probably only the 3 of us playing, so...
@@ -60,12 +59,11 @@ func (w *World) Logout(player *Player) {
 	w.mut.Lock()
 	defer w.mut.Unlock()
 
-	newPlayers := make([]*Player, 0)
+	newPlayers := make([]*Player, 0, len(w.Players)-1)
 	for _, p := range w.Players {
-		if p.Name == player.Name {
-			continue
+		if p.Name != player.Name {
+			newPlayers = append(newPlayers, p)
 		}
-		newPlayers = append(newPlayers, p)
 	}
 	w.Players = newPlayers
 	w.Grid[player.Location.Y][player.Location.X] = nil
@@ -151,31 +149,118 @@ func (w *World) ToString() string {
 	w.mut.Lock()
 	defer w.mut.Unlock()
 
-	var sb strings.Builder
-	tw := tabwriter.NewWriter(&sb, 4, 1, 1, ' ', 0)
-	fmt.Fprintln(tw, "Current state of the inferno:")
-	fmt.Fprintln(tw, "")
-	for y := 0; y < WorldSize; y++ {
-		fmt.Fprint(tw, "|\t")
-		for x := 0; x < WorldSize; x++ {
-			if w.Grid[y][x] != nil {
-				fmt.Fprint(tw, w.Grid[y][x].Name+"\t")
-			} else {
-				fmt.Fprint(tw, "_\t")
+	// Define a multi-layered ASCII representation of Dante's Inferno
+	infernoArt := []string{
+		"             Dante's Inferno              ",
+		"       __________________________________  ",
+		"      |       Circle 1: Limbo          |  ",
+		"      |            __________           |  ",
+		"      |           |          |          |  ",
+		"      |           |          |          |  ",
+		"      |           |          |          |  ",
+		"      |           |          |          |  ",
+		"      |           |          |          |  ",
+		"      |           |          |          |  ",
+		"      |           |          |          |  ",
+		"      |           |          |          |  ",
+		"      |           |          |          |  ",
+		"      |           |__________|          |  ",
+		"      |______________________________    |  ",
+		"      |       Circle 2: Lust          |  ",
+		"      |            __________           |  ",
+		"      |           |          |          |  ",
+		"      |           |          |          |  ",
+		"      |           |          |          |  ",
+		"      |           |          |          |  ",
+		"      |           |__________|          |  ",
+		"      |______________________________    |  ",
+		"      |       Circle 3: Gluttony       |  ",
+		"      |            __________           |  ",
+		"      |           |          |          |  ",
+		"      |           |          |          |  ",
+		"      |           |          |          |  ",
+		"      |           |__________|          |  ",
+		"      |______________________________    |  ",
+		"      |       Circle 4: Greed          |  ",
+		"      |            __________           |  ",
+		"      |           |          |          |  ",
+		"      |           |          |          |  ",
+		"      |           |          |          |  ",
+		"      |           |__________|          |  ",
+		"      |______________________________    |  ",
+		"      |       Circle 5: Wrath          |  ",
+		"      |            __________           |  ",
+		"      |           |          |          |  ",
+		"      |           |          |          |  ",
+		"      |           |          |          |  ",
+		"      |           |__________|          |  ",
+		"      |______________________________    |  ",
+		"      |       Circle 6: Heresy         |  ",
+		"      |            __________           |  ",
+		"      |           |          |          |  ",
+		"      |           |          |          |  ",
+		"      |           |          |          |  ",
+		"      |           |__________|          |  ",
+		"      |______________________________    |  ",
+		"      |       Circle 7: Violence        |  ",
+		"      |            __________           |  ",
+		"      |           |          |          |  ",
+		"      |           |          |          |  ",
+		"      |           |          |          |  ",
+		"      |           |__________|          |  ",
+		"      |______________________________    |  ",
+		"      |       Circle 8: Fraud          |  ",
+		"      |            __________           |  ",
+		"      |           |          |          |  ",
+		"      |           |          |          |  ",
+		"      |           |          |          |  ",
+		"      |           |__________|          |  ",
+		"      |______________________________    |  ",
+		"      |       Circle 9: Treachery      |  ",
+		"      |            __________           |  ",
+		"      |           |          |          |  ",
+		"      |           |          |          |  ",
+		"      |           |          |          |  ",
+		"      |           |__________|          |  ",
+		"      |__________________________________|  ",
+		"                                            ",
+		"____________________________________________",
+	}
+
+	// Create a grid to place players on the ASCII art
+	overlay := make([][]rune, len(infernoArt))
+	for i := range infernoArt {
+		overlay[i] = []rune(infernoArt[i])
+	}
+
+	// Map players to their positions based on Y-coordinate
+	for _, player := range w.Players {
+		layer := WorldSize - player.Location.Y - 1 // Invert the Y-coordinate for layers
+		x := 2 + player.Location.X                 // Adjust X position based on player's location
+
+		// Ensure player coordinates are within bounds of the overlay
+		if layer >= 0 && layer < len(overlay) && x < len(overlay[layer]) {
+			// Replace the corresponding position in the overlay with the player's initials
+			if player.Name != "" {
+				overlay[layer][x] = rune(player.Name[0]) // Using first initial of player's name
 			}
 		}
-		fmt.Fprintln(tw, "|")
 	}
-	tw.Flush()
 
-	sb.WriteString("\n")
-	sb.WriteString("Players:\n")
+	// Construct the final output string
+	var sb strings.Builder
+	fmt.Fprintln(&sb, "Current state of the inferno:")
+	fmt.Fprintln(&sb, "")
+
+	for _, line := range overlay {
+		sb.WriteString(string(line) + "\n")
+	}
+
+	sb.WriteString("\nPlayers:\n")
 	for _, p := range w.Players {
 		playerDescription := fmt.Sprintf("%s (%d)\n", p.Name, p.ItemLevel())
 		sb.WriteString(playerDescription)
 	}
-
-	sb.WriteString("\n")
 
 	return sb.String()
 }
