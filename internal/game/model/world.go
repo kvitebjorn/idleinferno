@@ -149,17 +149,10 @@ func (w *World) ToString() string {
 	w.mut.Lock()
 	defer w.mut.Unlock()
 
-	// Define a multi-layered ASCII representation of Dante's Inferno
 	infernoArt := []string{
-		"             Dante's Inferno              ",
 		"       __________________________________  ",
 		"      |       Circle 1: Limbo          |  ",
 		"      |            __________           |  ",
-		"      |           |          |          |  ",
-		"      |           |          |          |  ",
-		"      |           |          |          |  ",
-		"      |           |          |          |  ",
-		"      |           |          |          |  ",
 		"      |           |          |          |  ",
 		"      |           |          |          |  ",
 		"      |           |          |          |  ",
@@ -179,10 +172,12 @@ func (w *World) ToString() string {
 		"      |           |          |          |  ",
 		"      |           |          |          |  ",
 		"      |           |          |          |  ",
+		"      |           |          |          |  ",
 		"      |           |__________|          |  ",
 		"      |______________________________    |  ",
 		"      |       Circle 4: Greed          |  ",
 		"      |            __________           |  ",
+		"      |           |          |          |  ",
 		"      |           |          |          |  ",
 		"      |           |          |          |  ",
 		"      |           |          |          |  ",
@@ -193,10 +188,12 @@ func (w *World) ToString() string {
 		"      |           |          |          |  ",
 		"      |           |          |          |  ",
 		"      |           |          |          |  ",
+		"      |           |          |          |  ",
 		"      |           |__________|          |  ",
 		"      |______________________________    |  ",
 		"      |       Circle 6: Heresy         |  ",
 		"      |            __________           |  ",
+		"      |           |          |          |  ",
 		"      |           |          |          |  ",
 		"      |           |          |          |  ",
 		"      |           |          |          |  ",
@@ -207,10 +204,12 @@ func (w *World) ToString() string {
 		"      |           |          |          |  ",
 		"      |           |          |          |  ",
 		"      |           |          |          |  ",
+		"      |           |          |          |  ",
 		"      |           |__________|          |  ",
 		"      |______________________________    |  ",
 		"      |       Circle 8: Fraud          |  ",
 		"      |            __________           |  ",
+		"      |           |          |          |  ",
 		"      |           |          |          |  ",
 		"      |           |          |          |  ",
 		"      |           |          |          |  ",
@@ -221,48 +220,46 @@ func (w *World) ToString() string {
 		"      |           |          |          |  ",
 		"      |           |          |          |  ",
 		"      |           |          |          |  ",
+		"      |           |          |          |  ",
 		"      |           |__________|          |  ",
 		"      |__________________________________|  ",
 		"                                            ",
 		"____________________________________________",
 	}
 
-	// Create a grid to place players on the ASCII art
-	overlay := make([][]rune, len(infernoArt))
-	for i := range infernoArt {
-		overlay[i] = []rune(infernoArt[i])
-	}
+	// Circle bounds for random placement
+	xMin, xMax := 8, 36
+	yMin, yMax := 4, 7
 
-	// Map players to their positions based on Y-coordinate
+	// Player coordinates mapping
+	playerCoords := map[string]Coordinates{}
+
+	// Randomly assign coordinates within the circle bounds
+	// This is because we technically only are one array,
+	// but we have to visually occupy a whole circle/mini-grid
 	for _, player := range w.Players {
-		layer := WorldSize - player.Location.Y - 1 // Invert the Y-coordinate for layers
-		x := 2 + player.Location.X                 // Adjust X position based on player's location
-
-		// Ensure player coordinates are within bounds of the overlay
-		if layer >= 0 && layer < len(overlay) && x < len(overlay[layer]) {
-			// Replace the corresponding position in the overlay with the player's initials
-			if player.Name != "" {
-				overlay[layer][x] = rune(player.Name[0]) // Using first initial of player's name
-			}
-		}
+		layer := player.Location.Y
+		x := rand.IntN(xMax-xMin+1) + xMin
+		y := rand.IntN(yMax-yMin+1) + (layer * 8) + yMin
+		playerCoords[player.Name] = Coordinates{X: x, Y: y}
 	}
 
-	// Construct the final output string
-	var sb strings.Builder
-	fmt.Fprintln(&sb, "Current state of the inferno:")
-	fmt.Fprintln(&sb, "")
-
-	for _, line := range overlay {
-		sb.WriteString(string(line) + "\n")
+	// Place players on the ASCII art
+	for playerName, coord := range playerCoords {
+		x := coord.X
+		y := coord.Y
+		infernoArt[y] = infernoArt[y][:x] + playerName[0:1] + infernoArt[y][x+1:]
 	}
 
-	sb.WriteString("\nPlayers:\n")
-	for _, p := range w.Players {
-		playerDescription := fmt.Sprintf("%s (%d)\n", p.Name, p.ItemLevel())
-		sb.WriteString(playerDescription)
+	var playerList []string
+	for _, player := range w.Players {
+		playerList = append(playerList,
+			fmt.Sprintf("%s (%d)", player.Name, player.ItemLevel()))
 	}
 
-	return sb.String()
+	return strings.Join(infernoArt, "\n") +
+		"\n\nPlayers:\n" +
+		strings.Join(playerList, "\n")
 }
 
 func (w *World) getEmptyNeighborCoords(c *Coordinates) []Coordinates {
