@@ -583,6 +583,8 @@ var rings = []string{
 
 func GetItemName(i ItemClass) string {
 	switch i {
+	case Weapon:
+		return weapons[rand.IntN(len(weapons))]
 	case Head:
 		return helmets[rand.IntN(len(helmets))]
 	case Torso:
