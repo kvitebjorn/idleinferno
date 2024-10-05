@@ -56,9 +56,8 @@ func (p *Player) FindItem() {
 
 	rollMsg := fmt.Sprintf("%s rolled a %d to find an item (%d)",
 		p.Name, int(playerRollToFindTheItem*100), int(chanceToFindTheItem*100))
-	log.Println(rollMsg)
+	fmt.Println(rollMsg)
 	if chanceToFindTheItem > playerRollToFindTheItem {
-		log.Println(p.Name, "found no items.")
 		return
 	}
 
@@ -77,7 +76,7 @@ func (p *Player) FindItem() {
 	finalChance := playerRollToFindTheItem * itemLevelChance
 
 	if rand.Float64() > finalChance {
-		log.Println(p.Name, "found no items.")
+		fmt.Println(p.Name, "found no items.")
 	}
 
 	// Check if the found item is worse than existing one
@@ -92,7 +91,7 @@ func (p *Player) FindItem() {
 	newItem := createItem(ItemClass(itemClass), itemLevel)
 	newItem.Player = p.Name
 	p.Inventory[itemClass] = newItem
-	log.Println(p.Name, "acquired a", newItem.ToString())
+	log.Println(p.Name, "equipped a", newItem.ToString())
 }
 
 // weightedRandomItemLevel generates a random item level with bias towards lower levels

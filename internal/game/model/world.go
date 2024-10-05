@@ -254,11 +254,15 @@ func (w *World) ToString() string {
 	var playerList []string
 	for _, player := range w.Players {
 		playerList = append(playerList,
-			fmt.Sprintf("%s the %s (%d)", player.Name, player.Class, player.ItemLevel()))
+			fmt.Sprintf("%s the level %d %s (%d)",
+				player.Name,
+				player.Stats.Level(),
+				player.Class,
+				player.ItemLevel()))
 	}
 
 	return strings.Join(infernoArt, "\n") +
-		"\n\nPlayers:\n" +
+		"\n\nSinners:\n" +
 		strings.Join(playerList, "\n")
 }
 
