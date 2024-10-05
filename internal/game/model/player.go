@@ -132,6 +132,13 @@ func (p *Player) ToString() string {
 	fmt.Fprintf(tw, "Location: (%d,%d)\n", p.Location.X, p.Location.Y)
 	fmt.Fprintf(tw, "Id: %s\n", p.Id)
 	fmt.Fprintf(tw, "Created: %s\n", p.Stats.Created)
+	fmt.Fprintf(tw, "Inventory:\n")
+	for _, i := range p.Inventory {
+		if i == nil {
+			continue
+		}
+		fmt.Fprintf(tw, "%s (%d)", i.Name, i.ItemLevel)
+	}
 	tw.Flush()
 	return sb.String()
 }
