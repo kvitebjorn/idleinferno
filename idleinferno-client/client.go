@@ -16,6 +16,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"unicode"
 
 	"github.com/gorilla/websocket"
@@ -28,6 +29,7 @@ type Client struct {
 	serverAddress string
 	name          string
 	userInput     string
+	mut           sync.Mutex
 }
 
 func (c *Client) Run() {
@@ -66,6 +68,7 @@ func (c *Client) Run() {
 	// Listen for server messages
 	c.listen()
 }
+
 func (c *Client) menu() {
 	for {
 		fmt.Println("\n[l] login")
@@ -155,13 +158,13 @@ func (c *Client) handleLogin() {
 			Path:   "/ws",
 		}
 		ws, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
-		c.ws = ws
 		if err != nil {
 			log.Fatalln(
 				"Failed to connect to idleinferno server:",
 				err.Error(),
 			)
 		}
+		c.ws = ws
 
 		fmt.Println("Performing handshake with idleinferno server...")
 		var msg requests.UserMessage
@@ -468,7 +471,6 @@ func (c *Client) disconnect() {
 		c.ws.Close()
 	}
 	log.Println("Disconnected!")
-	os.Exit(1)
 }
 
 func (c *Client) handleInput() {
@@ -478,7 +480,10 @@ func (c *Client) handleInput() {
 		// Print the input prompt
 		fmt.Print("[map|info] → ")
 		input, _ := reader.ReadString('\n')
+
+		c.mut.Lock()
 		c.userInput = strings.TrimSpace(input) // Store input in the struct field
+		c.mut.Unlock()
 
 		if c.userInput == "" {
 			continue // Skip empty input
@@ -489,7 +494,9 @@ func (c *Client) handleInput() {
 		if err != nil {
 			log.Println("Error sending message:", err)
 		}
+		c.mut.Lock()
 		c.userInput = "" // Clear input after sending
+		c.mut.Unlock()
 	}
 }
 
@@ -519,7 +526,9 @@ func (c *Client) listen() {
 
 			// Reprint the input prompt and the current user input
 			fmt.Print("[map|info] → ")
+			c.mut.Lock()
 			fmt.Print(c.userInput) // Make sure we're printing the current input buffer
+			c.mut.Unlock()
 			os.Stdout.Sync()
 		default:
 			// Handle other message types here

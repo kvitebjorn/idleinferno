@@ -226,47 +226,53 @@ func (w *World) ToString() string {
 		"                                            ",
 		"____________________________________________",
 	}
-
 	// Circle bounds for random placement
 	xMin, xMax := 8, 36
 	yMin, yMax := 4, 7
+
+	// Track taken coordinates to avoid player overlap
+	occupiedCoords := map[Coordinates]bool{}
 
 	// Player coordinates mapping
 	playerCoords := map[string]Coordinates{}
 
 	// Randomly assign coordinates within the circle bounds
-	// This is because we technically only are one array,
-	// but we have to visually occupy a whole circle/mini-grid
 	for _, player := range w.Players {
-		layer := player.Location.Y
-		x := rand.IntN(xMax-xMin+1) + xMin
-		y := rand.IntN(yMax-yMin+1) + (layer * 8) + yMin
-		if y > len(infernoArt)-1 {
-			y -= 5
+		var coord Coordinates
+		for {
+			coord.X = rand.IntN(xMax-xMin+1) + xMin
+			coord.Y = rand.IntN(yMax-yMin+1) + (player.Location.Y * 8) + yMin
+			if !occupiedCoords[coord] {
+				occupiedCoords[coord] = true
+				break
+			}
 		}
-		if x > len(infernoArt[y])-1 {
-			x -= 5
-		}
-		playerCoords[player.Name] = Coordinates{X: x, Y: y}
+		playerCoords[player.Name] = coord
 	}
 
 	// Place players on the ASCII art
 	for playerName, coord := range playerCoords {
-		x := coord.X
-		y := coord.Y
-		infernoArt[y] = infernoArt[y][:x] + playerName[0:1] + infernoArt[y][x+1:]
+		x, y := coord.X, coord.Y
+		// Ensure we don't go out of bounds in the art
+		if y < len(infernoArt) && x < len(infernoArt[y]) {
+			// Show the first two letters of the player's name
+			playerDisplay := playerName[:min(2, len(playerName))]
+			infernoArt[y] = infernoArt[y][:x] + playerDisplay + infernoArt[y][x+len(playerDisplay):]
+		}
 	}
 
+	// Create a list of player details
 	var playerList []string
 	for _, player := range w.Players {
 		playerList = append(playerList,
-			fmt.Sprintf("%s the level %d %s (%d)",
+			fmt.Sprintf("%s the level %d %s (Item Level: %d)",
 				player.Name,
 				player.Stats.Level(),
 				player.Class,
 				player.ItemLevel()))
 	}
 
+	// Join the art and player list into a final output
 	return strings.Join(infernoArt, "\n") +
 		"\n\nSinners:\n" +
 		strings.Join(playerList, "\n")
