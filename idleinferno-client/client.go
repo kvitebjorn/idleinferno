@@ -472,7 +472,7 @@ func (c *Client) handleInput() {
 
 	for {
 		// Print the input prompt
-		fmt.Print("→ ")
+		fmt.Print("[map|info] → ")
 		input, _ := reader.ReadString('\n')
 		c.userInput = strings.TrimSpace(input) // Store input in the struct field
 
@@ -501,17 +501,24 @@ func (c *Client) listen() {
 
 		switch msg.Code {
 		case requests.Chatter:
-			// Clear the current line before printing the server message
-			fmt.Print("\033[K")      // ANSI escape code to clear the line
-			fmt.Println(msg.Message) // Print the received message
+			// Save the current cursor position
+			fmt.Print("\0337")
 
-			// Move the cursor back to the input line
-			fmt.Print("\033[F") // Move cursor up one line
-			// Reprint the prompt
-			fmt.Print("→ ")
-			// Reprint the last user input if necessary
-			fmt.Print(c.userInput) // Reprint the user input from the struct field
+			fmt.Print("\033[2K\r")   // Clear the line entirely and reset cursor to start
+			fmt.Println(msg.Message) // Print the server message
+
+			// Restore the cursor to the original input line
+			fmt.Print("\0338")
+
+			// Clear the input line again
+			fmt.Print("\033[2K\r")
+
+			// Reprint the input prompt and the current user input
+			fmt.Print("[map|info] → ")
+			fmt.Print(c.userInput) // Make sure we're printing the current input buffer
+			os.Stdout.Sync()
 		default:
+			// Handle other message types here
 		}
 	}
 }
