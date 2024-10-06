@@ -10,8 +10,8 @@ import (
 )
 
 // Probably only the 3 of us playing, so...
-// I guess each circle is only 1 array + purgatory = 10
-const WorldSize int = 10
+// I guess each circle is only 1 array
+const WorldSize int = 9
 
 type Coordinates struct {
 	X int
@@ -99,50 +99,96 @@ func (w *World) Scavenge() {
 
 func (w *World) Arena() {
 	w.mut.Lock()
-	defer w.mut.Unlock()
 
-	// TODO: can i cache this somehow? kind of want the anti-walk data
-	//       but we'd have to fight before we walk...
-	//       meh
-	alreadyFought := make(map[string]bool)
+	combatants := make([]*Player, 0)
 	for _, player := range w.Players {
-		if ok := alreadyFought[player.Name]; ok {
+		if player.ItemLevel() > 0 {
+			combatants = append(combatants, player)
+		}
+	}
+	w.mut.Unlock()
+
+	if len(combatants) == 0 {
+		fmt.Println("No players available for combat.")
+		return
+	}
+
+	alreadyFought := make(map[string]bool)
+
+	for _, player := range combatants {
+		if alreadyFought[player.Name] {
 			continue
 		}
+
+		w.mut.Lock()
 		neighborCoords := w.getOccupiedNeighborCoords(player.Location)
-		neighborCoordsLen := len(neighborCoords)
-		if neighborCoordsLen == 0 {
+		w.mut.Unlock()
+
+		if len(neighborCoords) == 0 {
 			continue
 		}
-		opponentCoords := neighborCoords[rand.IntN(neighborCoordsLen)]
+
+		opponentCoords := neighborCoords[rand.IntN(len(neighborCoords))]
 		opponent := w.Grid[opponentCoords.Y][opponentCoords.X]
 
-		if player.ItemLevel() == 0 || opponent.ItemLevel() == 0 {
+		if alreadyFought[opponent.Name] {
 			continue
 		}
 
-		playerRoll := rand.IntN(player.ItemLevel())
-		opponentRoll := rand.IntN(opponent.ItemLevel())
-		result := "won"
-		if opponentRoll >= playerRoll {
-			result = "lost"
-			opponent.Stats.IncrementXp()
-			player.Stats.DecrementXp()
-		} else {
-			opponent.Stats.DecrementXp()
-			player.Stats.IncrementXp()
-		}
-		combatMsg := fmt.Sprintf("%s (%d) challenged %s (%d) to a fight and %s!",
-			player.Name,
-			playerRoll,
-			opponent.Name,
-			opponentRoll,
-			result)
-		log.Println(combatMsg)
+		fightResult := w.fight(player, opponent)
+		log.Println(fightResult)
 
 		alreadyFought[player.Name] = true
 		alreadyFought[opponent.Name] = true
 	}
+}
+
+func (w *World) fight(player, opponent *Player) string {
+	playerRoll := rand.IntN(player.ItemLevel())
+	opponentRoll := rand.IntN(opponent.ItemLevel())
+
+	if playerRoll > opponentRoll {
+		player.Stats.IncrementXp()
+		opponent.Stats.DecrementXp()
+		return fmt.Sprintf("%s (%d) challenged %s (%d) and won!",
+			player.Name, playerRoll, opponent.Name, opponentRoll, player.Name, opponent.Name)
+	} else {
+		opponent.Stats.IncrementXp()
+		player.Stats.DecrementXp()
+		return fmt.Sprintf("%s (%d) challenged %s (%d) and lost!",
+			player.Name, playerRoll, opponent.Name, opponentRoll, opponent.Name, player.Name)
+	}
+}
+func (w *World) Revelation() {
+	w.mut.Lock()
+	defer w.mut.Unlock()
+
+	if len(w.Players) == 0 {
+		return
+	}
+
+	// 3% chance of Revelation occurring
+	if rand.IntN(100) < 3 {
+		chosenPlayer := w.Players[rand.IntN(len(w.Players))]
+
+		message := w.getRevelation(chosenPlayer)
+		log.Println(message)
+	}
+}
+
+func (w *World) getRevelation(player *Player) string {
+	isBlessing := rand.IntN(2) == 0
+	layer := player.Location.Y
+	revelation := ""
+
+	if isBlessing {
+		revelation = blessings[layer][rand.IntN(len(blessings[layer]))]
+		player.Stats.IncrementXp()
+	} else {
+		revelation = curses[layer][rand.IntN(len(curses[layer]))]
+		player.Stats.DecrementXp()
+	}
+	return fmt.Sprintf("The heavens tremble, and Hell quakes as %s beholds a divine revelation: %s", player.Name, revelation)
 }
 
 func (w *World) ToString() string {
@@ -265,7 +311,7 @@ func (w *World) ToString() string {
 	var playerList []string
 	for _, player := range w.Players {
 		playerList = append(playerList,
-			fmt.Sprintf("%s the level %d %s (Item Level: %d)",
+			fmt.Sprintf("%s the level %d %s (%d)",
 				player.Name,
 				player.Stats.Level(),
 				player.Class,

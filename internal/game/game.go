@@ -31,5 +31,6 @@ func (g *Game) tick() {
 	g.World.Wander()
 	g.World.Scavenge()
 	g.World.Arena()
+	g.World.Revelation()
 	return
 }

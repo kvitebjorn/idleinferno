@@ -605,3 +605,153 @@ func GetItemName(i ItemClass) string {
 		return ""
 	}
 }
+
+var blessings = [][]string{
+	// Circle 1: Limbo
+	{
+		"A glimmer of divine truth illuminates your mind.",
+		"The wisdom of the ages grants you clarity of thought.",
+		"The light of reason shines upon your path.",
+		"You are blessed with the gift of philosophical insight.",
+		"A spark of divine knowledge leads you closer to the truth.",
+	},
+	// Circle 2: Lust
+	{
+		"Your heart is purified by the flames of divine love.",
+		"A veil of chastity shields you from temptation.",
+		"You are granted the strength to resist the pull of lust.",
+		"Divine grace fills your heart, driving away impure desires.",
+		"The chains of passion fall away, leaving you free and clear.",
+	},
+	// Circle 3: Gluttony
+	{
+		"You are filled with the nourishment of the spirit, beyond earthly hunger.",
+		"Divine grace grants you the strength to resist excess.",
+		"You are blessed with the gift of temperance and moderation.",
+		"Spiritual sustenance fills your soul, leaving no need for indulgence.",
+		"A sense of divine satisfaction soothes your mortal cravings.",
+	},
+	// Circle 4: Greed
+	{
+		"You are blessed with the virtue of charity, freeing you from greed.",
+		"The riches of Heaven fill your heart, leaving no need for earthly wealth.",
+		"A sense of divine contentment releases you from material desires.",
+		"You are gifted with spiritual abundance, beyond material riches.",
+		"The blessings of generosity guide your actions, filling you with grace.",
+	},
+	// Circle 5: Wrath
+	{
+		"A wave of divine peace washes over your soul, quelling your anger.",
+		"The light of forgiveness fills your heart, driving away wrath.",
+		"You are blessed with the patience of the saints, unshaken by fury.",
+		"Divine justice steadies your hand, guiding you away from violence.",
+		"The serenity of Heaven calms your spirit, leaving no room for wrath.",
+	},
+	// Circle 6: Heresy
+	{
+		"You are blessed with unwavering faith, immune to heresy.",
+		"The light of divine truth shields you from falsehood.",
+		"A sense of spiritual clarity fills your mind, dispelling doubt.",
+		"You are guided by the wisdom of the saints, immune to deception.",
+		"The protection of grace guards you from the fires of heresy.",
+	},
+	// Circle 7: Violence
+	{
+		"You are shielded by divine mercy, safe from violence.",
+		"The hand of God stays your wrath, guiding you to peace.",
+		"A sense of divine protection surrounds you, keeping harm at bay.",
+		"You are filled with the grace of peace, calming your violent urges.",
+		"The strength of the saints steadies your hand, turning it from harm.",
+	},
+	// Circle 8: Fraud
+	{
+		"You are blessed with the gift of truth, immune to deception.",
+		"The light of honesty guides your words and actions.",
+		"You are granted the trust of others, blessed by divine truth.",
+		"The grace of sincerity fills your heart, freeing you from falsehood.",
+		"A sense of divine justice guards you from the snares of fraud.",
+	},
+	// Circle 9: Treachery
+	{
+		"You are blessed with the loyalty of Heaven, steadfast and true.",
+		"The grace of divine loyalty fills your heart, shielding you from treachery.",
+		"You are surrounded by the protection of faith, keeping betrayal at bay.",
+		"The light of loyalty guides your every step, holding you fast in truth.",
+		"The strength of divine grace shields you from the sin of treachery.",
+	},
+}
+
+var curses = [][]string{
+	// Circle 1: Limbo
+	{
+		"The shadow of doubt clouds your mind.",
+		"You feel the ache of eternal separation from the divine.",
+		"The absence of grace leaves you in spiritual desolation.",
+		"Your soul yearns for the light but finds only darkness.",
+		"You wander lost, searching for meaning that eludes you.",
+	},
+	// Circle 2: Lust
+	{
+		"The winds of lust toss your soul into unending desire.",
+		"You are consumed by burning passion, never to be satisfied.",
+		"Your heart is torn by the endless torment of unfulfilled longing.",
+		"The curse of lust leaves you adrift, lost in desire.",
+		"The fires of temptation burn within you, leaving you restless.",
+	},
+	// Circle 3: Gluttony
+	{
+		"The endless hunger gnaws at your soul, never to be sated.",
+		"You are consumed by the need to indulge, but nothing satisfies.",
+		"The curse of gluttony weighs upon you, sapping your strength.",
+		"Your body weakens under the weight of overindulgence.",
+		"The eternal feast turns to ashes in your mouth, leaving you starved.",
+	},
+	// Circle 4: Greed
+	{
+		"The weight of gold drags you down into the depths of greed.",
+		"You are cursed to hoard endlessly, never finding satisfaction.",
+		"The lust for wealth consumes you, leaving your soul empty.",
+		"The curse of greed leaves you grasping for more, but finding nothing.",
+		"The riches of the earth slip through your fingers, leaving you impoverished.",
+	},
+	// Circle 5: Wrath
+	{
+		"The flames of wrath burn within you, consuming your soul.",
+		"You are cursed with uncontrollable rage, lashing out at all around you.",
+		"The sin of anger clouds your judgment, leading you into destruction.",
+		"The fury of Hell courses through your veins, driving you to violence.",
+		"The curse of wrath leaves you blinded by hatred and fury.",
+	},
+	// Circle 6: Heresy
+	{
+		"You are cursed with doubt, questioning all that is holy.",
+		"The flames of heresy burn within you, leading you astray.",
+		"The sin of false belief clouds your mind, pulling you from the truth.",
+		"You are tormented by the whispers of heresy, leading you into darkness.",
+		"The fires of falsehood consume your spirit, leaving you lost.",
+	},
+	// Circle 7: Violence
+	{
+		"The blood of your enemies stains your hands, weighing down your soul.",
+		"You are cursed with a thirst for violence, never to be quenched.",
+		"The curse of brutality drives you to harm all who cross your path.",
+		"The sin of violence consumes you, leaving you in a storm of destruction.",
+		"Your soul is scarred by the harm you've done, and you find no peace.",
+	},
+	// Circle 8: Fraud
+	{
+		"The curse of lies entangles your soul, trapping you in deceit.",
+		"You are cursed to deceive and be deceived, lost in falsehood.",
+		"The sin of fraud poisons your tongue, leading you into betrayal.",
+		"You are weighed down by the chains of your own deceptions.",
+		"The curse of fraud leaves you untrustworthy and without allies.",
+	},
+	// Circle 9: Treachery
+	{
+		"The curse of betrayal gnaws at your soul, turning you against your allies.",
+		"You are cursed to abandon all who trust you, left alone in the darkness.",
+		"The sin of treachery binds you in chains of betrayal and lies.",
+		"You are consumed by the icy grip of treachery, cut off from all light.",
+		"The curse of treason leaves you isolated, forsaken by all.",
+	},
+}

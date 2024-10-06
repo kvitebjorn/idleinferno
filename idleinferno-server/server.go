@@ -208,8 +208,13 @@ func (s *Server) handleConnection(w http.ResponseWriter, r *http.Request) {
 	connMsg := fmt.Sprintf("%s connected!", client.Player.Name)
 	log.Println(connMsg)
 
-	// We send this because they will miss their own login broadcast message
-	conn.WriteJSON(&requests.PlayerMessage{Player: SERVER_PLAYER, Message: connMsg, Code: requests.Chatter})
+	go func() {
+		// Wait for 2 seconds
+		time.Sleep(2 * time.Second)
+
+		// We send this because they will usually miss their own login broadcast message due to lag and timing.
+		conn.WriteJSON(&requests.PlayerMessage{Player: SERVER_PLAYER, Message: connMsg, Code: requests.Chatter})
+	}()
 
 	// Listen for messages, respond if they are valid
 	for {
