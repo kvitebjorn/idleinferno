@@ -151,12 +151,12 @@ func (w *World) fight(player, opponent *Player) string {
 		player.Stats.IncrementXp()
 		opponent.Stats.DecrementXp()
 		return fmt.Sprintf("%s (%d) challenged %s (%d) and won!",
-			player.Name, playerRoll, opponent.Name, opponentRoll, player.Name, opponent.Name)
+			player.Name, playerRoll, opponent.Name, opponentRoll)
 	} else {
 		opponent.Stats.IncrementXp()
 		player.Stats.DecrementXp()
 		return fmt.Sprintf("%s (%d) challenged %s (%d) and lost!",
-			player.Name, playerRoll, opponent.Name, opponentRoll, opponent.Name, player.Name)
+			player.Name, playerRoll, opponent.Name, opponentRoll)
 	}
 }
 func (w *World) Revelation() {
@@ -167,8 +167,8 @@ func (w *World) Revelation() {
 		return
 	}
 
-	// 3% chance of Revelation occurring
-	if rand.IntN(100) < 3 {
+	// 2% chance of Revelation occurring
+	if rand.IntN(100) < 2 {
 		chosenPlayer := w.Players[rand.IntN(len(w.Players))]
 
 		message := w.getRevelation(chosenPlayer)

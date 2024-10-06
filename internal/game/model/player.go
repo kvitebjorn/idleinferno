@@ -51,14 +51,10 @@ If an item is found with the 10% base chance, for a level 20 player,
 */
 func (p *Player) FindItem() {
 	// Base chance of finding an item
-	playerRollToFindTheItem := float64(p.Stats.Level()+1) / 200.0
+	playerRollToFindTheItem := float64(p.Stats.Level()+1) / (float64(p.Stats.Level()) * 10)
 
 	// Random chance to find an item
 	chanceToFindTheItem := rand.Float64()
-
-	rollMsg := fmt.Sprintf("%s rolled a %d to find an item (%d)",
-		p.Name, int(playerRollToFindTheItem*100), int(chanceToFindTheItem*100))
-	fmt.Println(rollMsg)
 	if chanceToFindTheItem > playerRollToFindTheItem {
 		return
 	}
@@ -78,14 +74,11 @@ func (p *Player) FindItem() {
 	finalChance := playerRollToFindTheItem * itemLevelChance
 
 	if rand.Float64() > finalChance {
-		fmt.Println(p.Name, "found no items.")
+		return
 	}
 
 	// Check if the found item is worse than existing one
 	if p.Inventory[itemClass] != nil && p.Inventory[itemClass].ItemLevel > itemLevel {
-		fmt.Println(p.Name,
-			"found a new item, but it's worse than their",
-			p.Inventory[itemClass].ToString())
 		return
 	}
 
