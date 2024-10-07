@@ -37,9 +37,10 @@ func (p Player) ItemLevel() int {
 }
 
 /*
-There is about a 10% chance to find an item per turn.
+The base chance of finding an item increases with player level.
+For a level 20 player, this is around 20%
 
-If an item is found with the 10% base chance, for a level 20 player,
+If an item is found with the 20% base chance, for a level 20 player,
 
 	  the percentage chance to then find items of the following levels is:
 
@@ -51,7 +52,7 @@ If an item is found with the 10% base chance, for a level 20 player,
 */
 func (p *Player) FindItem() {
 	// Base chance of finding an item
-	playerRollToFindTheItem := float64(p.Stats.Level()+1) / (float64(p.Stats.Level()) * 10)
+	playerRollToFindTheItem := float64(p.Stats.Level()+2) / 100.0
 
 	// Random chance to find an item
 	chanceToFindTheItem := rand.Float64()
